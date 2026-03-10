@@ -1156,18 +1156,18 @@ than with fully supervised autonomous navigation policy learning from supervisio
 
 ### Official references
 
-- Cholec80 official repository: https://github.com/CAMMA-public/TF-Cholec80
-- Cholec80-CVS official repository: https://github.com/CAMMA-public/CHOLEC80-CVS-PUBLIC
-- Cholec80-CVS paper: https://www.nature.com/articles/s41597-023-02073-7
-- CholecT50 official repository: https://github.com/CAMMA-public/cholect50
-- Endoscapes official repository: https://github.com/CAMMA-public/Endoscapes
-- CAMMA overlap analysis repository: https://github.com/CAMMA-public/VideoID-Overlap-Analysis-of-Cholecystectomy-Datasets
-- CholecInstanceSeg paper: https://doi.org/10.1038/s41597-025-05163-w
-- CholecTrack20 official repository: https://github.com/CAMMA-public/cholectrack20
-- CholecTrack20 paper: https://arxiv.org/abs/2312.07352
-- GraSP official repository: https://github.com/BCV-Uniandes/GraSP
-- AutoLaparo official repository: https://github.com/ziyiwangx/AutoLaparo
-- AutoLaparo official website: https://autolaparo.github.io
-- AutoLaparo paper: https://arxiv.org/abs/2208.02049
-- M2CAI challenge: http://camma.u-strasbg.fr/m2cai2016/index.php/program-challenge/
-- Walimbe et al. (MICCAI 2025): https://arxiv.org/abs/2507.05020
+- Cholec80 official repository: <https://github.com/CAMMA-public/TF-Cholec80>
+- Cholec80-CVS official repository: <https://github.com/CAMMA-public/CHOLEC80-CVS-PUBLIC>
+- Cholec80-CVS paper: <https://www.nature.com/articles/s41597-023-02073-7>
+- CholecT50 official repository: <https://github.com/CAMMA-public/cholect50>
+- Endoscapes official repository: <https://github.com/CAMMA-public/Endoscapes>
+- CAMMA overlap analysis repository: <https://github.com/CAMMA-public/VideoID-Overlap-Analysis-of-Cholecystectomy-Datasets>
+- CholecInstanceSeg paper: <https://doi.org/10.1038/s41597-025-05163-w>
+- CholecTrack20 official repository: <https://github.com/CAMMA-public/cholectrack20>
+- CholecTrack20 paper: <https://arxiv.org/abs/2312.07352>
+- GraSP official repository: <https://github.com/BCV-Uniandes/GraSP>
+- AutoLaparo official repository: <https://github.com/ziyiwangx/AutoLaparo>
+- AutoLaparo official website: <https://autolaparo.github.io>
+- AutoLaparo paper: <https://arxiv.org/abs/2208.02049>
+- M2CAI challenge: <http://camma.u-strasbg.fr/m2cai2016/index.php/program-challenge/>
+- Walimbe et al. (MICCAI 2025): <https://arxiv.org/abs/2507.05020>
