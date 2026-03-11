@@ -1,0 +1,16 @@
+seed: 3407
+fps: 1
+sequence_length: 16
+window_stride: 8
+hazard:
+  num_bins: 20
+  bin_edges_sec: [0,1,2,3,4,5,6,7,8,9,10,12,14,16,18,20,22,24,26,28,30]
+coverage_groups:
+  G1: 0.05
+  G2: 0.35
+  G3: 0.05
+  G4: 0.04
+  G5: 0.03
+  G6: 0.23
+  G7: 0.25
+coverage_dropout_prob: 0.30

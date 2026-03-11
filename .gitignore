@@ -1,0 +1,107 @@
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# ---------- Packaging / Build ----------
+*.egg
+*.egg-info/
+.eggs/
+dist/
+build/
+*.whl
+pip-wheel-metadata/
+*.manifest
+*.spec
+
+# ---------- Virtual Environments ----------
+.env
+.venv/
+venv/
+env/
+ENV/
+
+# ---------- Model Weights & Checkpoints ----------
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.bin
+*.onnx
+*.tflite
+*.engine
+*.plan
+
+# ---------- Data Files (large binary) ----------
+*.h5
+*.hdf5
+*.npz
+*.npy
+*.pkl
+*.pickle
+*.parquet
+*.feather
+*.arrow
+*.tfrecord
+*.tar
+*.tar.gz
+*.zip
+*.gz
+*.bz2
+
+# ---------- Images / Videos (avoid accidental commits) ----------
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tiff
+*.mp4
+*.avi
+*.mkv
+
+# ---------- Experiment Tracking ----------
+wandb/
+mlruns/
+outputs/
+runs/
+tensorboard/
+
+# ---------- Training Artifacts ----------
+checkpoints/
+logs/
+results/
+predictions/
+cache/
+
+# ---------- Jupyter Notebook ----------
+.ipynb_checkpoints/
+*.ipynb_output/
+
+# ---------- IDE / Editor ----------
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.settings/
+
+# ---------- OS ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- Profiling ----------
+*.prof
+*.lprof
+*.timeline
+nvprof_*.log
+nsys_*.qdrep
+nsys_*.sqlite
+
+# ---------- Misc ----------
+*.log
+core
+core.*

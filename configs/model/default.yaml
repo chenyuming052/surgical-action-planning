@@ -1,0 +1,27 @@
+backbone:
+  name: dinov3_vitb16
+  feature_dim: 768
+  frozen: true
+  image_size: 518
+  alternative_backbones:
+    - lemonfm
+    - dinov2_vitb14
+    - resnet50
+encoder:
+  input_proj_dim: 512
+  transformer_layers: 6
+  num_heads: 8
+  dropout: 0.10
+transition:
+  horizons_sec: [1, 3, 5, 10]
+  horizon_embed_dim: 64
+  hidden_dim: 512
+heads:
+  triplet_group_dim: 18   # Phase 0 backfill after clustering
+  instrument_dim: 6
+  phase_dim: 7
+  cvs_ordinal_dim: 6
+  anatomy_dim: 5
+hazard:
+  shared_hidden_dim: 256
+  num_bins: 20

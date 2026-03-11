@@ -1,0 +1,21 @@
+tiers:
+  tier1: core_action_change
+  tier2a: cvs_state
+  tier2b: cvs_at_clipping
+  tier3: phase
+  tier4: instrument
+  tier5: anatomy
+metrics:
+  - inst_change_map
+  - group_change_map
+  - ttc_inst_mae
+  - ttc_group_mae
+  - c_index_inst
+  - c_index_group
+  - brier_inst_at_5s
+  - brier_group_at_5s
+  - dense_map
+  - phase_acc
+  - cvs_auc
+  - cvs_mae_at_clip
+  - anatomy_map
