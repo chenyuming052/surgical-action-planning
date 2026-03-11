@@ -53,7 +53,7 @@ Input [B, T, 768] (frozen backbone features)
 
 ## Key Conventions
 
-- **Naming**: `loss/` singular, `metrics/` `utils/` plural. Files singular (`backbone.py` not `backbones.py`). `hazard_head.py` for model, `hazard_loss.py` for loss (disambiguated).
+- **Naming**: `loss/` singular, `metrics/` `utils/` plural. Files singular (`backbone.py` not `backbones.py`). `hazard_head.py` for model, `hazard_loss.py` for loss (disambiguated). Docs use hyphens (`data-analysis.md`); code/artifacts/scripts use underscores (`registry_summary.csv`).
 - **Imports**: Use `from surgcast.models import SurgCastModel`, not relative across packages.
 - **Config**: YAML in `configs/{data,model,train,eval}/default.yaml`. No OmegaConf yet — plain `yaml.safe_load`.
 - **Data contract**: NPZ per-video labels, HDF5 features. See `docs/dataset-contract.md` for exact array shapes/dtypes.
