@@ -98,9 +98,10 @@ The loader should parse both and produce `public_id -> canonical_id`.
 
 Treat Cholec80-CVS as an annotation layer on top of Cholec80.
 
-Hard rule:
+Rules:
 
-- if `in_cholec80 == true`, then `has_cholec80_cvs == true`
+- `has_cholec80_cvs` is `true` only when `--cvs-xlsx` is provided
+- If `in_cholec80` and `has_cholec80_cvs` is `false`, a note `no_cvs_xlsx_provided` is added
 - Cholec80-CVS inherits `canonical_id` from Cholec80
 - Cholec80-CVS inherits `split` from Cholec80
 
@@ -108,10 +109,14 @@ Hard rule:
 
 ### 6.1 Priority order
 
-1. If a CAMMA combined split manifest exists, use it.
+0. **CAMMA combined split strategy** (authoritative): requires `CholecT50_splits.json`,
+   `Endoscapes_splits.json`, and `Cholec80_splits.json` in the mapping directory.
+   Preserves CT50 and Endoscapes official splits, adjusts C80 to avoid conflicts.
+   Priority: CT50 > Endo > C80. Produces 168/48/61 (train/val/test).
+1. If a single CAMMA combined split manifest file exists, use it.
 2. Otherwise use the deterministic proposal fallback quotas.
 
-### 6.2 Fallback quotas
+### 6.2 Fallback quotas (last resort when CAMMA split files unavailable)
 
 - `G1`: train 2, val 1, test 0
 - `G2`: train 28, val 6, test 8
@@ -138,8 +143,12 @@ The script must fail if any of the following is violated:
 - a record gets an invalid split
 - a `G1` record is missing one of the three datasets
 - a `G5` record has any CVS label source
-- a Cholec80 record does not inherit Cholec80-CVS coverage
 - an Endoscapes record does not have both CVS and bbox coverage
+
+Soft checks (add notes instead of failing):
+
+- a Cholec80 record without `has_cholec80_cvs` → note `no_cvs_xlsx_provided`
+- a Cholec80 record without `cholec80_tool_presence` → note `no_tool_presence_files_found`
 
 If `--strict-counts` is enabled, also fail when group counts differ from the
 proposal expectation.

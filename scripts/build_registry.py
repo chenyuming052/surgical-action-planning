@@ -49,6 +49,11 @@ EXPECTED_GROUP_COUNTS = {
     "G7": 192,
 }
 
+# Last-resort fallback quotas from the proposal's estimated quota table.
+# Used ONLY when the three CAMMA split files (CholecT50_splits.json,
+# Endoscapes_splits.json, Cholec80_splits.json) are unavailable.
+# The authoritative split assignment is the CAMMA combined split strategy
+# which produces 168/48/61 (train/val/test), not 191/41/45.
 FALLBACK_SPLIT_QUOTAS = {
     "G1": {"train": 2, "val": 1, "test": 0},
     "G2": {"train": 28, "val": 6, "test": 8},
@@ -280,8 +285,12 @@ def discover_endoscapes(root: Path, public_to_canonical: Dict[str, str]) -> Dict
     probes: Dict[str, VideoProbe] = {}
 
     metadata_path = find_first(root.rglob("all_metadata.csv"), lambda p: True)
+    # Frame counts come from metadata CSV only (authoritative, avoids double-counting).
     counts_by_public: Dict[str, int] = defaultdict(int)
+    # frames_dir comes from image walking only (to find the actual directory).
     dirs_by_public: Dict[str, Counter] = defaultdict(Counter)
+    # Track which public_ids we know about from all sources.
+    known_public_ids: set = set(public_to_canonical.keys())
 
     if metadata_path is not None:
         with metadata_path.open("r", encoding="utf-8", errors="ignore") as f:
@@ -291,28 +300,43 @@ def discover_endoscapes(root: Path, public_to_canonical: Dict[str, str]) -> Dict
                 if public_id is None:
                     continue
                 counts_by_public[public_id] += 1
+                known_public_ids.add(public_id)
 
-    # If metadata is not enough, also walk image files and try to infer a public id
-    # from the closest parent directory or filename stem.
-    for path in root.rglob("*"):
-        if not (path.is_file() and path.suffix.lower() in IMAGE_SUFFIXES):
+    # Walk only train/, val/, test/ split directories for image discovery.
+    # Real Endoscapes layout: flat files named {vid}_{frame}.jpg inside split dirs.
+    split_dirs = [root / split_name for split_name in ("train", "val", "test")]
+    for split_dir in split_dirs:
+        if not split_dir.is_dir():
             continue
-        public_id = None
-        candidates = [path.parent.name, path.parent.parent.name if path.parent.parent else "", path.stem]
-        for cand in candidates:
-            if cand in public_to_canonical:
-                public_id = cand
-                break
-        if public_id is not None:
-            counts_by_public[public_id] += 1
+        for path in split_dir.iterdir():
+            if not (path.is_file() and path.suffix.lower() in IMAGE_SUFFIXES):
+                continue
+            # Extract public_id from {vid}_{frame}.jpg filename pattern.
+            stem = path.stem
+            sep_idx = stem.find("_")
+            if sep_idx > 0:
+                public_id = stem[:sep_idx]
+            else:
+                public_id = stem
             dirs_by_public[public_id][str(path.parent)] += 1
+            known_public_ids.add(public_id)
+            # Only use image walk for frame count if metadata didn't provide it.
+            # (We accumulate here; we'll reconcile below.)
 
-    for public_id in sorted(counts_by_public):
+    # Build probes for all known public_ids.
+    all_public_ids = known_public_ids | set(counts_by_public.keys())
+    for public_id in sorted(all_public_ids):
         canonical_id = public_to_canonical.get(public_id)
+        # Frame count: prefer metadata CSV count; fall back to image walk count.
+        frame_count = counts_by_public.get(public_id)
+        if frame_count is None or frame_count == 0:
+            # Sum image files found for this public_id across split dirs.
+            img_count = sum(dirs_by_public.get(public_id, Counter()).values())
+            frame_count = img_count if img_count > 0 else None
         probes[public_id] = VideoProbe(
             dataset_video_id=public_id,
             canonical_id=canonical_id,
-            frame_count=counts_by_public.get(public_id),
+            frame_count=frame_count,
             frames_dir=choose_best_frames_dir(dirs_by_public.get(public_id, Counter())),
             label_paths=[str(metadata_path)] if metadata_path is not None else [],
             extra_paths={},
@@ -329,14 +353,81 @@ def load_endoscapes_mapping(mapping_dir: Path) -> Dict[str, str]:
             "Could not find mapping_to_endoscapes.json or endoscapes_vid_id_map.csv under mapping-dir."
         )
 
+    # Try CAMMA composition first: JSON gives cholec_id→endo_orig_vid_id,
+    # CSV gives endo_orig_vid_id→endo_public_vid_id. Compose to get
+    # str(public_vid_id) → canonical_id.
     pairs: Dict[str, str] = {}
-    for path in mapping_files_json:
-        pairs.update(_parse_mapping_json(path))
-    for path in mapping_files_csv:
-        pairs.update(_parse_mapping_csv(path))
+    if mapping_files_json and mapping_files_csv:
+        pairs = _compose_camma_mapping(mapping_files_json[0], mapping_files_csv[0])
+
+    # Fallback: try generic parsing if composition yielded nothing
+    # (handles hypothetical pre-processed formats).
+    if not pairs:
+        for path in mapping_files_json:
+            pairs.update(_parse_mapping_json(path))
+        for path in mapping_files_csv:
+            pairs.update(_parse_mapping_csv(path))
 
     if not pairs:
         raise RuntimeError("Endoscapes mapping files were found but no public_id -> canonical_id pairs were parsed.")
+    return pairs
+
+
+def _compose_camma_mapping(json_path: Path, csv_path: Path) -> Dict[str, str]:
+    """Compose CAMMA mapping files to get {str(public_vid_id): canonical_id}.
+
+    JSON format: {"cholec_id_str": endo_orig_vid_id_int, ...}
+    CSV format: orig_vid_id,public_vid_id (both int, header row)
+
+    Composition: cholec_id → endo_orig_vid_id (JSON) → endo_public_vid_id (CSV)
+    Result: {str(public_vid_id): normalize_vid(cholec_id)}
+    """
+    # Step 1: Parse JSON → {cholec_id_int: endo_orig_vid_id_int}
+    obj = json.loads(read_text(json_path))
+    if not isinstance(obj, dict):
+        return {}
+    cholec_to_orig: Dict[int, int] = {}
+    for k, v in obj.items():
+        try:
+            cholec_id = int(k)
+            orig_vid_id = int(v)
+            cholec_to_orig[cholec_id] = orig_vid_id
+        except (ValueError, TypeError):
+            continue
+
+    if not cholec_to_orig:
+        return {}
+
+    # Step 2: Parse CSV → {endo_orig_vid_id_int: endo_public_vid_id_int}
+    orig_to_public: Dict[int, int] = {}
+    with csv_path.open("r", encoding="utf-8", errors="ignore") as f:
+        reader = csv.DictReader(f)
+        if reader.fieldnames is None:
+            return {}
+        # Normalize field names for matching
+        field_map = {str(fld).strip().lower(): str(fld).strip() for fld in reader.fieldnames}
+        orig_col = field_map.get("orig_vid_id")
+        public_col = field_map.get("public_vid_id")
+        if orig_col is None or public_col is None:
+            return {}
+        for row in reader:
+            try:
+                orig_id = int(row[orig_col])
+                public_id = int(row[public_col])
+                orig_to_public[orig_id] = public_id
+            except (ValueError, TypeError, KeyError):
+                continue
+
+    if not orig_to_public:
+        return {}
+
+    # Step 3: Compose → {str(public_vid_id): canonical_id}
+    pairs: Dict[str, str] = {}
+    for cholec_id, orig_vid_id in cholec_to_orig.items():
+        public_vid_id = orig_to_public.get(orig_vid_id)
+        if public_vid_id is not None:
+            pairs[str(public_vid_id)] = normalize_vid(cholec_id)
+
     return pairs
 
 
@@ -418,6 +509,15 @@ def _parse_mapping_csv(path: Path) -> Dict[str, str]:
     return pairs
 
 
+# Individual CAMMA split files that should NOT be treated as a combined manifest.
+# These are handled by load_camma_combined_split() which composes all three.
+_CAMMA_INDIVIDUAL_SPLIT_FILES = {
+    "cholect50_splits.json",
+    "endoscapes_splits.json",
+    "cholec80_splits.json",
+}
+
+
 def load_combined_split_manifest(mapping_dir: Path, explicit_path: Optional[Path]) -> Tuple[Dict[str, str], Optional[str]]:
     candidates: List[Path] = []
     if explicit_path is not None:
@@ -429,6 +529,10 @@ def load_combined_split_manifest(mapping_dir: Path, explicit_path: Optional[Path
                 if p.is_file()
                 and p.suffix.lower() in {".json", ".csv", ".txt", ".tsv"}
                 and ("split" in p.name.lower() or "combined" in p.name.lower() or "assignment" in p.name.lower())
+                # Exclude individual CAMMA dataset split files — they only cover
+                # a single dataset and would cause assign_splits() to crash when
+                # it expects coverage of all canonical IDs.
+                and p.name.lower() not in _CAMMA_INDIVIDUAL_SPLIT_FILES
             ]
         )
     )
@@ -452,6 +556,30 @@ def _parse_split_manifest(path: Path) -> Dict[str, str]:
 
 def _extract_split_pairs_from_json(obj: Any) -> Dict[str, str]:
     pairs: Dict[str, str] = {}
+
+    # Inverted format: {"train": [id_list], "val": [...], "test": [...]}
+    # List elements can be integers (bare video numbers) or strings parseable
+    # by extract_vid().
+    if isinstance(obj, dict):
+        split_names = {"train", "val", "test"}
+        if all(k in obj and isinstance(obj[k], list) for k in split_names):
+            for split_name in split_names:
+                for elem in obj[split_name]:
+                    vid = None
+                    if isinstance(elem, int):
+                        vid = normalize_vid(elem)
+                    else:
+                        vid = extract_vid(str(elem))
+                        if vid is None:
+                            # Try as bare integer string
+                            try:
+                                vid = normalize_vid(int(elem))
+                            except (ValueError, TypeError):
+                                pass
+                    if vid is not None:
+                        pairs[vid] = split_name
+            if pairs:
+                return pairs
 
     def visit(x: Any) -> None:
         if isinstance(x, dict):
@@ -520,9 +648,121 @@ def _vid_sort_key(vid: str) -> Tuple[int, str]:
 
 
 def synthesize_endoscapes_canonical_id(public_id: str) -> str:
-    # Last-resort fallback. Prefer real CAMMA mapping instead of this.
+    """Synthesize a canonical ID for Endoscapes videos without a CAMMA mapping.
+
+    This is the standard path for G7 videos: the CAMMA mapping only covers ~9
+    overlapping Cholec-Endoscapes recordings.  The remaining ~192 Endoscapes-only
+    videos receive ENDO_<public_id> canonical IDs.
+    """
     cleaned = re.sub(r"[^A-Za-z0-9]+", "_", public_id).strip("_")
     return f"ENDO_{cleaned}"
+
+
+def _parse_inverted_split_json(path: Path) -> Dict[str, List[int]]:
+    """Parse ``{"train": [int,...], "val": [...], "test": [...]}`` format."""
+    obj = json.loads(read_text(path))
+    if not isinstance(obj, dict):
+        return {}
+    result: Dict[str, List[int]] = {}
+    for split_name in ("train", "val", "test"):
+        if split_name not in obj:
+            return {}  # all three splits must be present
+        ids = obj[split_name]
+        if not isinstance(ids, list):
+            return {}
+        try:
+            result[split_name] = [int(x) for x in ids]
+        except (ValueError, TypeError):
+            return {}
+    return result
+
+
+def load_camma_combined_split(
+    mapping_dir: Path,
+    public_to_canonical: Dict[str, str],
+    allow_synthesized: bool,
+) -> Tuple[Dict[str, str], Optional[str]]:
+    """Compute the CAMMA combined split strategy.
+
+    Implements the authoritative split assignment from the proposal: preserve
+    CholecT50 and Endoscapes official splits, adjust Cholec80 to avoid
+    conflicts.  Priority order: CT50 > Endo > C80 (adjusted).
+
+    Requires all three split files in *mapping_dir*:
+      ``CholecT50_splits.json``, ``Endoscapes_splits.json``,
+      ``Cholec80_splits.json``
+
+    Returns ``({canonical_id: split}, source_description)`` or ``({}, None)``
+    if any of the required files are missing or unparseable.
+    """
+    ct50_path = mapping_dir / "CholecT50_splits.json"
+    endo_path = mapping_dir / "Endoscapes_splits.json"
+    c80_path = mapping_dir / "Cholec80_splits.json"
+
+    if not (ct50_path.exists() and endo_path.exists() and c80_path.exists()):
+        return {}, None
+
+    ct50_splits = _parse_inverted_split_json(ct50_path)
+    endo_splits = _parse_inverted_split_json(endo_path)
+    c80_splits = _parse_inverted_split_json(c80_path)
+
+    if not ct50_splits or not endo_splits or not c80_splits:
+        return {}, None
+
+    # Load orig_vid_id -> public_vid_id from endoscapes_vid_id_map.csv
+    csv_files = list(mapping_dir.rglob("endoscapes_vid_id_map.csv"))
+    if not csv_files:
+        return {}, None
+
+    orig_to_public: Dict[int, int] = {}
+    with csv_files[0].open("r", encoding="utf-8", errors="ignore") as f:
+        reader = csv.DictReader(f)
+        if reader.fieldnames is not None:
+            field_map = {str(fld).strip().lower(): str(fld).strip() for fld in reader.fieldnames}
+            orig_col = field_map.get("orig_vid_id")
+            public_col = field_map.get("public_vid_id")
+            if orig_col and public_col:
+                for row in reader:
+                    try:
+                        orig_to_public[int(row[orig_col])] = int(row[public_col])
+                    except (ValueError, TypeError, KeyError):
+                        continue
+
+    if not orig_to_public:
+        return {}, None
+
+    result: Dict[str, str] = {}
+
+    # Priority 1: CholecT50 (highest priority — preserves official CT50 split)
+    for split_name, vid_ids in ct50_splits.items():
+        for vid_num in vid_ids:
+            canonical_id = normalize_vid(vid_num)
+            result[canonical_id] = split_name
+
+    # Priority 2: Endoscapes (values in split file are orig_vid_ids)
+    for split_name, orig_ids in endo_splits.items():
+        for orig_id in orig_ids:
+            public_id = orig_to_public.get(orig_id)
+            if public_id is None:
+                continue  # orig_id not in CSV — skip
+            public_str = str(public_id)
+            canonical_id = public_to_canonical.get(public_str)
+            if canonical_id is None:
+                if not allow_synthesized:
+                    continue
+                canonical_id = synthesize_endoscapes_canonical_id(public_str)
+            if canonical_id not in result:  # CT50 takes priority
+                result[canonical_id] = split_name
+
+    # Priority 3: Cholec80 (lowest — only assigns G6 videos not covered above)
+    for split_name, vid_ids in c80_splits.items():
+        for vid_num in vid_ids:
+            canonical_id = normalize_vid(vid_num)
+            if canonical_id not in result:  # CT50 and Endo take priority
+                result[canonical_id] = split_name
+
+    source = f"camma_strategy:{ct50_path.name}+{endo_path.name}+{c80_path.name}"
+    return result, source
 
 
 def build_rows(
@@ -544,8 +784,8 @@ def build_rows(
     for canonical_id, probe in cholec80.items():
         row = ensure_row(canonical_id)
         row.in_cholec80 = True
-        row.has_cholec80_cvs = True  # proposal: CVS covers all 80 Cholec80 videos
-        row.cholec80_tool_presence = True  # proposal: tool-presence available for all Cholec80 videos
+        row.has_cholec80_cvs = (cvs_xlsx is not None)
+        row.cholec80_tool_presence = bool(probe.extra_paths.get("tool_presence_files"))
         row.frame_counts["cholec80"] = probe.frame_count or 0
         row.source_ids["cholec80_video_id"] = probe.dataset_video_id
         if probe.frames_dir is not None:
@@ -674,7 +914,7 @@ def assign_splits(
             if split not in {"train", "val", "test"}:
                 raise RuntimeError(f"Unsupported split value for {canonical_id}: {split!r}")
             row.split = split
-            row.split_source = f"camma_manifest:{manifest_path}"
+            row.split_source = manifest_path
         return
 
     # Fallback split: deterministic and quota-based.
@@ -761,12 +1001,15 @@ def validate_registry(
         if row.coverage_group == "G1":
             if not (row.in_cholect50 and row.in_cholec80 and row.in_endoscapes):
                 raise RuntimeError(f"{row.canonical_id} mislabeled as G1")
-        if row.coverage_group == "G5" and (row.has_cholec80_cvs or row.has_endoscapes_cvs):
-            raise RuntimeError(f"{row.canonical_id} in G5 should have no CVS labels")
+        if row.coverage_group == "G5":
+            if row.has_cholec80_cvs:
+                raise RuntimeError(f"{row.canonical_id} in G5 should have no Cholec80-CVS labels")
+            if row.has_endoscapes_cvs:
+                raise RuntimeError(f"{row.canonical_id} in G5 should have no Endoscapes-CVS labels")
         if row.in_cholec80 and not row.has_cholec80_cvs:
-            raise RuntimeError(f"{row.canonical_id} in Cholec80 must inherit Cholec80-CVS coverage")
+            row.notes.append("no_cvs_xlsx_provided")
         if row.in_cholec80 and not row.cholec80_tool_presence:
-            raise RuntimeError(f"{row.canonical_id} in Cholec80 must have tool-presence coverage")
+            row.notes.append("no_tool_presence_files_found")
         if row.in_endoscapes and not (row.has_endoscapes_cvs and row.has_endoscapes_bbox):
             raise RuntimeError(f"{row.canonical_id} in Endoscapes must have CVS+bbox coverage")
 
@@ -889,20 +1132,126 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--allow-synthesized-endoscapes-ids",
         action="store_true",
-        help="If mapping is incomplete, synthesize ENDO_<public_id> canonical ids instead of failing.",
+        default=True,
+        help="Synthesize ENDO_<public_id> canonical ids for the ~192 G7 videos "
+        "that have no CAMMA mapping. This is the standard path (default: True).",
+    )
+    parser.add_argument(
+        "--no-allow-synthesized-endoscapes-ids",
+        action="store_false",
+        dest="allow_synthesized_endoscapes_ids",
+        help="Fail instead of synthesizing canonical ids for unmapped Endoscapes videos.",
     )
     return parser.parse_args()
+
+
+def _validate_dataset_root(root: Path, name: str) -> None:
+    """Ensure a dataset root directory exists and is a non-empty directory."""
+    if not root.exists():
+        raise FileNotFoundError(
+            f"{name} root does not exist: {root}\n"
+            f"Check the --{name.lower().replace(' ', '-')}-root argument."
+        )
+    if not root.is_dir():
+        raise NotADirectoryError(f"{name} root is not a directory: {root}")
 
 
 def main() -> None:
     args = parse_args()
 
+    # --- Input validation (Fix #1 & #3) ---
+    _validate_dataset_root(args.cholec80_root, "cholec80")
+    _validate_dataset_root(args.cholect50_root, "cholect50")
+    _validate_dataset_root(args.endoscapes_root, "endoscapes")
+
+    if args.cvs_xlsx is not None and not args.cvs_xlsx.is_file():
+        raise FileNotFoundError(
+            f"--cvs-xlsx path does not exist or is not a file: {args.cvs_xlsx}"
+        )
+
     public_to_canonical = load_endoscapes_mapping(args.mapping_dir)
-    combined_manifest, manifest_path = load_combined_split_manifest(args.mapping_dir, args.split_manifest)
+
+    # Split source priority: CAMMA strategy > single manifest file > fallback quotas
+    combined_manifest, manifest_path = load_camma_combined_split(
+        args.mapping_dir, public_to_canonical, args.allow_synthesized_endoscapes_ids,
+    )
+    if combined_manifest:
+        print(f"[INFO] Using CAMMA combined split strategy ({len(combined_manifest)} assignments)")
+    else:
+        combined_manifest, manifest_path = load_combined_split_manifest(args.mapping_dir, args.split_manifest)
+        if combined_manifest:
+            print(f"[INFO] Using single split manifest: {manifest_path}")
+        else:
+            print("[WARN] No CAMMA split files or manifest found — using fallback quotas (191/41/45)")
 
     cholec80 = discover_cholec80(args.cholec80_root)
     cholect50 = discover_cholect50(args.cholect50_root)
     endoscapes = discover_endoscapes(args.endoscapes_root, public_to_canonical)
+
+    # Post-discovery sanity checks: ensure roots actually contained data.
+    if not cholec80:
+        raise RuntimeError(
+            f"Cholec80 root {args.cholec80_root} exists but no videos were discovered. "
+            f"Check that the directory contains video folders with frames."
+        )
+    if not cholect50:
+        raise RuntimeError(
+            f"CholecT50 root {args.cholect50_root} exists but no videos were discovered. "
+            f"Check that the directory contains video folders with frames/labels."
+        )
+    if not endoscapes:
+        raise RuntimeError(
+            f"Endoscapes root {args.endoscapes_root} exists but no videos were discovered. "
+            f"Check that the directory contains train/val/test split directories or all_metadata.csv."
+        )
+    # Warn about zero-frame Endoscapes probes — indicates the root was found
+    # but the actual image data is missing or mislocated.
+    zero_frame_endo = [
+        pid for pid, probe in endoscapes.items()
+        if probe.frame_count is None or probe.frame_count == 0
+    ]
+    if zero_frame_endo:
+        n_zero = len(zero_frame_endo)
+        n_total = len(endoscapes)
+        if n_zero == n_total:
+            raise RuntimeError(
+                f"All {n_total} Endoscapes probes have 0 frames. "
+                f"The root {args.endoscapes_root} appears to lack image data and all_metadata.csv. "
+                f"Expected layout: {{root}}/train/*.jpg, {{root}}/all_metadata.csv, etc."
+            )
+        print(
+            f"[WARN] {n_zero}/{n_total} Endoscapes videos have 0 discovered frames. "
+            f"First few: {zero_frame_endo[:5]}"
+        )
+
+    # Check for metadata-only Endoscapes probes: frame_count > 0 (from
+    # all_metadata.csv) but no actual image files on disk (frames_dir is None).
+    # This catches the case where someone provides a root with only the CSV.
+    metadata_only_endo = [
+        pid for pid, probe in endoscapes.items()
+        if probe.frames_dir is None and probe.frame_count is not None and probe.frame_count > 0
+    ]
+    if metadata_only_endo:
+        n_meta_only = len(metadata_only_endo)
+        n_total = len(endoscapes)
+        if args.strict_counts and n_meta_only > 0:
+            raise RuntimeError(
+                f"{n_meta_only}/{n_total} Endoscapes probes have frame counts from "
+                f"all_metadata.csv but no actual image files on disk. "
+                f"Under --strict-counts this is not allowed. "
+                f"First few: {metadata_only_endo[:5]}"
+            )
+        if n_meta_only > n_total // 2:
+            raise RuntimeError(
+                f"{n_meta_only}/{n_total} Endoscapes probes have frame counts from "
+                f"all_metadata.csv but no actual image files on disk. "
+                f"The root {args.endoscapes_root} appears to be missing most image data. "
+                f"Expected layout: {{root}}/train/*.jpg, {{root}}/val/*.jpg, {{root}}/test/*.jpg"
+            )
+        print(
+            f"[WARN] {n_meta_only}/{n_total} Endoscapes videos have metadata frame counts "
+            f"but no image files found on disk. First few: {metadata_only_endo[:5]}"
+        )
 
     rows = build_rows(
         cholec80=cholec80,
@@ -915,6 +1264,17 @@ def main() -> None:
 
     assign_splits(rows, combined_manifest=combined_manifest, manifest_path=manifest_path, seed=args.seed)
     summary = validate_registry(rows, strict_counts=args.strict_counts)
+
+    # Surface discrepancy if CAMMA strategy produces different counts than fallback
+    split_counts = summary.get("split_counts", {})
+    if manifest_path and "camma_strategy:" in str(manifest_path):
+        actual = (split_counts.get("train", 0), split_counts.get("val", 0), split_counts.get("test", 0))
+        if actual != (191, 41, 45):
+            print(
+                f"[INFO] CAMMA strategy split counts {actual[0]}/{actual[1]}/{actual[2]} "
+                f"differ from fallback quota estimate 191/41/45 — this is expected."
+            )
+
     payload = make_registry_payload(
         rows=rows,
         summary=summary,

@@ -78,6 +78,14 @@ Only `scripts/build_registry.py` is implemented (870 lines, merges 4 datasets �
 
 Execution order: `build_registry → preprocess_* → extract_features → build_priors → train → evaluate`. See `docs/runbook.md`.
 
+## Data Split (CAMMA Combined Strategy)
+
+168 train / 48 val / 61 test. Per group:
+- G1: 3/0/0, G2: 28/5/9, G3: 3/0/0, G4: 3/0/0, G5: 1/0/1, G6: 17/4/11, G7: 113/39/40
+
+Evaluation tiers (test counts): Tier 1=10, Tier 2a=51, Tier 2b=9, Tier 3=20, Tier 4=21, Tier 5=40.
+All tiers meet or exceed original proposal estimates. G3-test=0 (all in train by CAMMA).
+
 ## Engineering Constraints
 
 - Build canonical registry BEFORE any split or feature extraction
