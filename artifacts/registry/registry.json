@@ -7,10 +7,11 @@
     "mapping_dir": "/yuming/repos/camma_dataset_overlaps/resources",
     "cvs_xlsx": "/yuming/data/cholec80-cvs/cholec80-CVS.xlsx",
     "split_manifest": "camma_strategy:CholecT50_splits.json+Endoscapes_splits.json+Cholec80_splits.json",
-    "strict_counts": true,
+    "strict_counts": false,
     "allow_synthesized_endoscapes_ids": true,
     "seed": 2026,
-    "n_endoscapes_mapping_pairs": 22
+    "n_endoscapes_mapping_pairs_active": 9,
+    "n_endoscapes_mapping_pairs_total": 22
   },
   "summary": {
     "n_records": 277,
@@ -678,6 +679,41 @@
         "frame_count_mismatch: cholec80=1749, cholect50=1750"
       ]
     },
+    "ENDO_11": {
+      "canonical_id": "ENDO_11",
+      "split": "train",
+      "split_source": "camma_strategy:CholecT50_splits.json+Endoscapes_splits.json+Cholec80_splits.json",
+      "coverage_group": "G7",
+      "in_cholec80": false,
+      "in_cholect50": false,
+      "in_endoscapes": true,
+      "has_cholec80_cvs": false,
+      "cholec80_tool_presence": false,
+      "has_endoscapes_cvs": true,
+      "has_endoscapes_bbox": true,
+      "labels_available": [
+        "cvs_endoscapes",
+        "anatomy_bbox"
+      ],
+      "frame_counts": {
+        "endoscapes": 183
+      },
+      "source_ids": {
+        "endoscapes_public_ids": [
+          "11"
+        ],
+        "camma_cholec_id": "VID97"
+      },
+      "file_paths": {
+        "endoscapes_frames_dirs": [
+          "/yuming/data/endoscapes-2023/train"
+        ],
+        "endoscapes_metadata_files": [
+          "/yuming/data/endoscapes-2023/all_metadata.csv"
+        ]
+      },
+      "notes": []
+    },
     "VID11": {
       "canonical_id": "VID11",
       "split": "train",
@@ -887,6 +923,41 @@
         "frame_count_mismatch: cholec80=981, cholect50=982"
       ]
     },
+    "ENDO_14": {
+      "canonical_id": "ENDO_14",
+      "split": "train",
+      "split_source": "camma_strategy:CholecT50_splits.json+Endoscapes_splits.json+Cholec80_splits.json",
+      "coverage_group": "G7",
+      "in_cholec80": false,
+      "in_cholect50": false,
+      "in_endoscapes": true,
+      "has_cholec80_cvs": false,
+      "cholec80_tool_presence": false,
+      "has_endoscapes_cvs": true,
+      "has_endoscapes_bbox": true,
+      "labels_available": [
+        "cvs_endoscapes",
+        "anatomy_bbox"
+      ],
+      "frame_counts": {
+        "endoscapes": 63
+      },
+      "source_ids": {
+        "endoscapes_public_ids": [
+          "14"
+        ],
+        "camma_cholec_id": "VID100"
+      },
+      "file_paths": {
+        "endoscapes_frames_dirs": [
+          "/yuming/data/endoscapes-2023/train"
+        ],
+        "endoscapes_metadata_files": [
+          "/yuming/data/endoscapes-2023/all_metadata.csv"
+        ]
+      },
+      "notes": []
+    },
     "VID14": {
       "canonical_id": "VID14",
       "split": "test",
@@ -1022,6 +1093,41 @@
       "notes": [
         "frame_count_mismatch: cholec80=2058, cholect50=2059"
       ]
+    },
+    "ENDO_16": {
+      "canonical_id": "ENDO_16",
+      "split": "train",
+      "split_source": "camma_strategy:CholecT50_splits.json+Endoscapes_splits.json+Cholec80_splits.json",
+      "coverage_group": "G7",
+      "in_cholec80": false,
+      "in_cholect50": false,
+      "in_endoscapes": true,
+      "has_cholec80_cvs": false,
+      "cholec80_tool_presence": false,
+      "has_endoscapes_cvs": true,
+      "has_endoscapes_bbox": true,
+      "labels_available": [
+        "cvs_endoscapes",
+        "anatomy_bbox"
+      ],
+      "frame_counts": {
+        "endoscapes": 153
+      },
+      "source_ids": {
+        "endoscapes_public_ids": [
+          "16"
+        ],
+        "camma_cholec_id": "VID101"
+      },
+      "file_paths": {
+        "endoscapes_frames_dirs": [
+          "/yuming/data/endoscapes-2023/train"
+        ],
+        "endoscapes_metadata_files": [
+          "/yuming/data/endoscapes-2023/all_metadata.csv"
+        ]
+      },
+      "notes": []
     },
     "VID16": {
       "canonical_id": "VID16",
@@ -1219,6 +1325,41 @@
       "notes": [
         "frame_count_mismatch: cholec80=1942, cholect50=1943"
       ]
+    },
+    "ENDO_19": {
+      "canonical_id": "ENDO_19",
+      "split": "train",
+      "split_source": "camma_strategy:CholecT50_splits.json+Endoscapes_splits.json+Cholec80_splits.json",
+      "coverage_group": "G7",
+      "in_cholec80": false,
+      "in_cholect50": false,
+      "in_endoscapes": true,
+      "has_cholec80_cvs": false,
+      "cholec80_tool_presence": false,
+      "has_endoscapes_cvs": true,
+      "has_endoscapes_bbox": true,
+      "labels_available": [
+        "cvs_endoscapes",
+        "anatomy_bbox"
+      ],
+      "frame_counts": {
+        "endoscapes": 1473
+      },
+      "source_ids": {
+        "endoscapes_public_ids": [
+          "19"
+        ],
+        "camma_cholec_id": "VID102"
+      },
+      "file_paths": {
+        "endoscapes_frames_dirs": [
+          "/yuming/data/endoscapes-2023/train"
+        ],
+        "endoscapes_metadata_files": [
+          "/yuming/data/endoscapes-2023/all_metadata.csv"
+        ]
+      },
+      "notes": []
     },
     "VID19": {
       "canonical_id": "VID19",
@@ -1903,6 +2044,41 @@
         "frame_count_mismatch: cholec80=2084, cholect50=2085"
       ]
     },
+    "ENDO_28": {
+      "canonical_id": "ENDO_28",
+      "split": "train",
+      "split_source": "camma_strategy:CholecT50_splits.json+Endoscapes_splits.json+Cholec80_splits.json",
+      "coverage_group": "G7",
+      "in_cholec80": false,
+      "in_cholect50": false,
+      "in_endoscapes": true,
+      "has_cholec80_cvs": false,
+      "cholec80_tool_presence": false,
+      "has_endoscapes_cvs": true,
+      "has_endoscapes_bbox": true,
+      "labels_available": [
+        "cvs_endoscapes",
+        "anatomy_bbox"
+      ],
+      "frame_counts": {
+        "endoscapes": 123
+      },
+      "source_ids": {
+        "endoscapes_public_ids": [
+          "28"
+        ],
+        "camma_cholec_id": "VID106"
+      },
+      "file_paths": {
+        "endoscapes_frames_dirs": [
+          "/yuming/data/endoscapes-2023/train"
+        ],
+        "endoscapes_metadata_files": [
+          "/yuming/data/endoscapes-2023/all_metadata.csv"
+        ]
+      },
+      "notes": []
+    },
     "VID28": {
       "canonical_id": "VID28",
       "split": "train",
@@ -2100,6 +2276,41 @@
       },
       "notes": []
     },
+    "ENDO_31": {
+      "canonical_id": "ENDO_31",
+      "split": "train",
+      "split_source": "camma_strategy:CholecT50_splits.json+Endoscapes_splits.json+Cholec80_splits.json",
+      "coverage_group": "G7",
+      "in_cholec80": false,
+      "in_cholect50": false,
+      "in_endoscapes": true,
+      "has_cholec80_cvs": false,
+      "cholec80_tool_presence": false,
+      "has_endoscapes_cvs": true,
+      "has_endoscapes_bbox": true,
+      "labels_available": [
+        "cvs_endoscapes",
+        "anatomy_bbox"
+      ],
+      "frame_counts": {
+        "endoscapes": 243
+      },
+      "source_ids": {
+        "endoscapes_public_ids": [
+          "31"
+        ],
+        "camma_cholec_id": "VID108"
+      },
+      "file_paths": {
+        "endoscapes_frames_dirs": [
+          "/yuming/data/endoscapes-2023/train"
+        ],
+        "endoscapes_metadata_files": [
+          "/yuming/data/endoscapes-2023/all_metadata.csv"
+        ]
+      },
+      "notes": []
+    },
     "VID31": {
       "canonical_id": "VID31",
       "split": "train",
@@ -2150,6 +2361,41 @@
       "notes": [
         "frame_count_mismatch: cholec80=3945, cholect50=3946"
       ]
+    },
+    "ENDO_32": {
+      "canonical_id": "ENDO_32",
+      "split": "train",
+      "split_source": "camma_strategy:CholecT50_splits.json+Endoscapes_splits.json+Cholec80_splits.json",
+      "coverage_group": "G7",
+      "in_cholec80": false,
+      "in_cholect50": false,
+      "in_endoscapes": true,
+      "has_cholec80_cvs": false,
+      "cholec80_tool_presence": false,
+      "has_endoscapes_cvs": true,
+      "has_endoscapes_bbox": true,
+      "labels_available": [
+        "cvs_endoscapes",
+        "anatomy_bbox"
+      ],
+      "frame_counts": {
+        "endoscapes": 663
+      },
+      "source_ids": {
+        "endoscapes_public_ids": [
+          "32"
+        ],
+        "camma_cholec_id": "VID109"
+      },
+      "file_paths": {
+        "endoscapes_frames_dirs": [
+          "/yuming/data/endoscapes-2023/train"
+        ],
+        "endoscapes_metadata_files": [
+          "/yuming/data/endoscapes-2023/all_metadata.csv"
+        ]
+      },
+      "notes": []
     },
     "VID32": {
       "canonical_id": "VID32",
@@ -2557,6 +2803,41 @@
       },
       "notes": []
     },
+    "ENDO_38": {
+      "canonical_id": "ENDO_38",
+      "split": "train",
+      "split_source": "camma_strategy:CholecT50_splits.json+Endoscapes_splits.json+Cholec80_splits.json",
+      "coverage_group": "G7",
+      "in_cholec80": false,
+      "in_cholect50": false,
+      "in_endoscapes": true,
+      "has_cholec80_cvs": false,
+      "cholec80_tool_presence": false,
+      "has_endoscapes_cvs": true,
+      "has_endoscapes_bbox": true,
+      "labels_available": [
+        "cvs_endoscapes",
+        "anatomy_bbox"
+      ],
+      "frame_counts": {
+        "endoscapes": 483
+      },
+      "source_ids": {
+        "endoscapes_public_ids": [
+          "38"
+        ],
+        "camma_cholec_id": "VID112"
+      },
+      "file_paths": {
+        "endoscapes_frames_dirs": [
+          "/yuming/data/endoscapes-2023/train"
+        ],
+        "endoscapes_metadata_files": [
+          "/yuming/data/endoscapes-2023/all_metadata.csv"
+        ]
+      },
+      "notes": []
+    },
     "VID38": {
       "canonical_id": "VID38",
       "split": "train",
@@ -2666,6 +2947,41 @@
           "/yuming/data/cholec80/tool_annotations/video39-tool.txt"
         ],
         "cholec80_cvs_xlsx": "/yuming/data/cholec80-cvs/cholec80-CVS.xlsx"
+      },
+      "notes": []
+    },
+    "ENDO_40": {
+      "canonical_id": "ENDO_40",
+      "split": "train",
+      "split_source": "camma_strategy:CholecT50_splits.json+Endoscapes_splits.json+Cholec80_splits.json",
+      "coverage_group": "G7",
+      "in_cholec80": false,
+      "in_cholect50": false,
+      "in_endoscapes": true,
+      "has_cholec80_cvs": false,
+      "cholec80_tool_presence": false,
+      "has_endoscapes_cvs": true,
+      "has_endoscapes_bbox": true,
+      "labels_available": [
+        "cvs_endoscapes",
+        "anatomy_bbox"
+      ],
+      "frame_counts": {
+        "endoscapes": 123
+      },
+      "source_ids": {
+        "endoscapes_public_ids": [
+          "40"
+        ],
+        "camma_cholec_id": "VID114"
+      },
+      "file_paths": {
+        "endoscapes_frames_dirs": [
+          "/yuming/data/endoscapes-2023/train"
+        ],
+        "endoscapes_metadata_files": [
+          "/yuming/data/endoscapes-2023/all_metadata.csv"
+        ]
       },
       "notes": []
     },
@@ -6044,40 +6360,6 @@
       },
       "notes": []
     },
-    "VID82": {
-      "canonical_id": "VID82",
-      "split": "test",
-      "split_source": "camma_strategy:CholecT50_splits.json+Endoscapes_splits.json+Cholec80_splits.json",
-      "coverage_group": "G7",
-      "in_cholec80": false,
-      "in_cholect50": false,
-      "in_endoscapes": true,
-      "has_cholec80_cvs": false,
-      "cholec80_tool_presence": false,
-      "has_endoscapes_cvs": true,
-      "has_endoscapes_bbox": true,
-      "labels_available": [
-        "cvs_endoscapes",
-        "anatomy_bbox"
-      ],
-      "frame_counts": {
-        "endoscapes": 273
-      },
-      "source_ids": {
-        "endoscapes_public_ids": [
-          "163"
-        ]
-      },
-      "file_paths": {
-        "endoscapes_frames_dirs": [
-          "/yuming/data/endoscapes-2023/test"
-        ],
-        "endoscapes_metadata_files": [
-          "/yuming/data/endoscapes-2023/all_metadata.csv"
-        ]
-      },
-      "notes": []
-    },
     "ENDO_83": {
       "canonical_id": "ENDO_83",
       "split": "train",
@@ -6666,40 +6948,6 @@
       },
       "notes": []
     },
-    "VID97": {
-      "canonical_id": "VID97",
-      "split": "train",
-      "split_source": "camma_strategy:CholecT50_splits.json+Endoscapes_splits.json+Cholec80_splits.json",
-      "coverage_group": "G7",
-      "in_cholec80": false,
-      "in_cholect50": false,
-      "in_endoscapes": true,
-      "has_cholec80_cvs": false,
-      "cholec80_tool_presence": false,
-      "has_endoscapes_cvs": true,
-      "has_endoscapes_bbox": true,
-      "labels_available": [
-        "cvs_endoscapes",
-        "anatomy_bbox"
-      ],
-      "frame_counts": {
-        "endoscapes": 183
-      },
-      "source_ids": {
-        "endoscapes_public_ids": [
-          "11"
-        ]
-      },
-      "file_paths": {
-        "endoscapes_frames_dirs": [
-          "/yuming/data/endoscapes-2023/train"
-        ],
-        "endoscapes_metadata_files": [
-          "/yuming/data/endoscapes-2023/all_metadata.csv"
-        ]
-      },
-      "notes": []
-    },
     "ENDO_98": {
       "canonical_id": "ENDO_98",
       "split": "train",
@@ -6802,40 +7050,6 @@
       },
       "notes": []
     },
-    "VID100": {
-      "canonical_id": "VID100",
-      "split": "train",
-      "split_source": "camma_strategy:CholecT50_splits.json+Endoscapes_splits.json+Cholec80_splits.json",
-      "coverage_group": "G7",
-      "in_cholec80": false,
-      "in_cholect50": false,
-      "in_endoscapes": true,
-      "has_cholec80_cvs": false,
-      "cholec80_tool_presence": false,
-      "has_endoscapes_cvs": true,
-      "has_endoscapes_bbox": true,
-      "labels_available": [
-        "cvs_endoscapes",
-        "anatomy_bbox"
-      ],
-      "frame_counts": {
-        "endoscapes": 63
-      },
-      "source_ids": {
-        "endoscapes_public_ids": [
-          "14"
-        ]
-      },
-      "file_paths": {
-        "endoscapes_frames_dirs": [
-          "/yuming/data/endoscapes-2023/train"
-        ],
-        "endoscapes_metadata_files": [
-          "/yuming/data/endoscapes-2023/all_metadata.csv"
-        ]
-      },
-      "notes": []
-    },
     "ENDO_101": {
       "canonical_id": "ENDO_101",
       "split": "train",
@@ -6870,40 +7084,6 @@
       },
       "notes": []
     },
-    "VID101": {
-      "canonical_id": "VID101",
-      "split": "train",
-      "split_source": "camma_strategy:CholecT50_splits.json+Endoscapes_splits.json+Cholec80_splits.json",
-      "coverage_group": "G7",
-      "in_cholec80": false,
-      "in_cholect50": false,
-      "in_endoscapes": true,
-      "has_cholec80_cvs": false,
-      "cholec80_tool_presence": false,
-      "has_endoscapes_cvs": true,
-      "has_endoscapes_bbox": true,
-      "labels_available": [
-        "cvs_endoscapes",
-        "anatomy_bbox"
-      ],
-      "frame_counts": {
-        "endoscapes": 153
-      },
-      "source_ids": {
-        "endoscapes_public_ids": [
-          "16"
-        ]
-      },
-      "file_paths": {
-        "endoscapes_frames_dirs": [
-          "/yuming/data/endoscapes-2023/train"
-        ],
-        "endoscapes_metadata_files": [
-          "/yuming/data/endoscapes-2023/all_metadata.csv"
-        ]
-      },
-      "notes": []
-    },
     "ENDO_102": {
       "canonical_id": "ENDO_102",
       "split": "train",
@@ -6926,40 +7106,6 @@
       "source_ids": {
         "endoscapes_public_ids": [
           "102"
-        ]
-      },
-      "file_paths": {
-        "endoscapes_frames_dirs": [
-          "/yuming/data/endoscapes-2023/train"
-        ],
-        "endoscapes_metadata_files": [
-          "/yuming/data/endoscapes-2023/all_metadata.csv"
-        ]
-      },
-      "notes": []
-    },
-    "VID102": {
-      "canonical_id": "VID102",
-      "split": "train",
-      "split_source": "camma_strategy:CholecT50_splits.json+Endoscapes_splits.json+Cholec80_splits.json",
-      "coverage_group": "G7",
-      "in_cholec80": false,
-      "in_cholect50": false,
-      "in_endoscapes": true,
-      "has_cholec80_cvs": false,
-      "cholec80_tool_presence": false,
-      "has_endoscapes_cvs": true,
-      "has_endoscapes_bbox": true,
-      "labels_available": [
-        "cvs_endoscapes",
-        "anatomy_bbox"
-      ],
-      "frame_counts": {
-        "endoscapes": 1473
-      },
-      "source_ids": {
-        "endoscapes_public_ids": [
-          "19"
         ]
       },
       "file_paths": {
@@ -7119,40 +7265,6 @@
       },
       "notes": []
     },
-    "VID105": {
-      "canonical_id": "VID105",
-      "split": "test",
-      "split_source": "camma_strategy:CholecT50_splits.json+Endoscapes_splits.json+Cholec80_splits.json",
-      "coverage_group": "G7",
-      "in_cholec80": false,
-      "in_cholect50": false,
-      "in_endoscapes": true,
-      "has_cholec80_cvs": false,
-      "cholec80_tool_presence": false,
-      "has_endoscapes_cvs": true,
-      "has_endoscapes_bbox": true,
-      "labels_available": [
-        "cvs_endoscapes",
-        "anatomy_bbox"
-      ],
-      "frame_counts": {
-        "endoscapes": 273
-      },
-      "source_ids": {
-        "endoscapes_public_ids": [
-          "168"
-        ]
-      },
-      "file_paths": {
-        "endoscapes_frames_dirs": [
-          "/yuming/data/endoscapes-2023/test"
-        ],
-        "endoscapes_metadata_files": [
-          "/yuming/data/endoscapes-2023/all_metadata.csv"
-        ]
-      },
-      "notes": []
-    },
     "ENDO_106": {
       "canonical_id": "ENDO_106",
       "split": "train",
@@ -7175,40 +7287,6 @@
       "source_ids": {
         "endoscapes_public_ids": [
           "106"
-        ]
-      },
-      "file_paths": {
-        "endoscapes_frames_dirs": [
-          "/yuming/data/endoscapes-2023/train"
-        ],
-        "endoscapes_metadata_files": [
-          "/yuming/data/endoscapes-2023/all_metadata.csv"
-        ]
-      },
-      "notes": []
-    },
-    "VID106": {
-      "canonical_id": "VID106",
-      "split": "train",
-      "split_source": "camma_strategy:CholecT50_splits.json+Endoscapes_splits.json+Cholec80_splits.json",
-      "coverage_group": "G7",
-      "in_cholec80": false,
-      "in_cholect50": false,
-      "in_endoscapes": true,
-      "has_cholec80_cvs": false,
-      "cholec80_tool_presence": false,
-      "has_endoscapes_cvs": true,
-      "has_endoscapes_bbox": true,
-      "labels_available": [
-        "cvs_endoscapes",
-        "anatomy_bbox"
-      ],
-      "frame_counts": {
-        "endoscapes": 123
-      },
-      "source_ids": {
-        "endoscapes_public_ids": [
-          "28"
         ]
       },
       "file_paths": {
@@ -7289,40 +7367,6 @@
       },
       "notes": []
     },
-    "VID108": {
-      "canonical_id": "VID108",
-      "split": "train",
-      "split_source": "camma_strategy:CholecT50_splits.json+Endoscapes_splits.json+Cholec80_splits.json",
-      "coverage_group": "G7",
-      "in_cholec80": false,
-      "in_cholect50": false,
-      "in_endoscapes": true,
-      "has_cholec80_cvs": false,
-      "cholec80_tool_presence": false,
-      "has_endoscapes_cvs": true,
-      "has_endoscapes_bbox": true,
-      "labels_available": [
-        "cvs_endoscapes",
-        "anatomy_bbox"
-      ],
-      "frame_counts": {
-        "endoscapes": 243
-      },
-      "source_ids": {
-        "endoscapes_public_ids": [
-          "31"
-        ]
-      },
-      "file_paths": {
-        "endoscapes_frames_dirs": [
-          "/yuming/data/endoscapes-2023/train"
-        ],
-        "endoscapes_metadata_files": [
-          "/yuming/data/endoscapes-2023/all_metadata.csv"
-        ]
-      },
-      "notes": []
-    },
     "ENDO_109": {
       "canonical_id": "ENDO_109",
       "split": "train",
@@ -7345,40 +7389,6 @@
       "source_ids": {
         "endoscapes_public_ids": [
           "109"
-        ]
-      },
-      "file_paths": {
-        "endoscapes_frames_dirs": [
-          "/yuming/data/endoscapes-2023/train"
-        ],
-        "endoscapes_metadata_files": [
-          "/yuming/data/endoscapes-2023/all_metadata.csv"
-        ]
-      },
-      "notes": []
-    },
-    "VID109": {
-      "canonical_id": "VID109",
-      "split": "train",
-      "split_source": "camma_strategy:CholecT50_splits.json+Endoscapes_splits.json+Cholec80_splits.json",
-      "coverage_group": "G7",
-      "in_cholec80": false,
-      "in_cholect50": false,
-      "in_endoscapes": true,
-      "has_cholec80_cvs": false,
-      "cholec80_tool_presence": false,
-      "has_endoscapes_cvs": true,
-      "has_endoscapes_bbox": true,
-      "labels_available": [
-        "cvs_endoscapes",
-        "anatomy_bbox"
-      ],
-      "frame_counts": {
-        "endoscapes": 663
-      },
-      "source_ids": {
-        "endoscapes_public_ids": [
-          "32"
         ]
       },
       "file_paths": {
@@ -7571,40 +7581,6 @@
       },
       "notes": []
     },
-    "VID112": {
-      "canonical_id": "VID112",
-      "split": "train",
-      "split_source": "camma_strategy:CholecT50_splits.json+Endoscapes_splits.json+Cholec80_splits.json",
-      "coverage_group": "G7",
-      "in_cholec80": false,
-      "in_cholect50": false,
-      "in_endoscapes": true,
-      "has_cholec80_cvs": false,
-      "cholec80_tool_presence": false,
-      "has_endoscapes_cvs": true,
-      "has_endoscapes_bbox": true,
-      "labels_available": [
-        "cvs_endoscapes",
-        "anatomy_bbox"
-      ],
-      "frame_counts": {
-        "endoscapes": 483
-      },
-      "source_ids": {
-        "endoscapes_public_ids": [
-          "38"
-        ]
-      },
-      "file_paths": {
-        "endoscapes_frames_dirs": [
-          "/yuming/data/endoscapes-2023/train"
-        ],
-        "endoscapes_metadata_files": [
-          "/yuming/data/endoscapes-2023/all_metadata.csv"
-        ]
-      },
-      "notes": []
-    },
     "ENDO_113": {
       "canonical_id": "ENDO_113",
       "split": "train",
@@ -7673,40 +7649,6 @@
       },
       "notes": []
     },
-    "VID114": {
-      "canonical_id": "VID114",
-      "split": "train",
-      "split_source": "camma_strategy:CholecT50_splits.json+Endoscapes_splits.json+Cholec80_splits.json",
-      "coverage_group": "G7",
-      "in_cholec80": false,
-      "in_cholect50": false,
-      "in_endoscapes": true,
-      "has_cholec80_cvs": false,
-      "cholec80_tool_presence": false,
-      "has_endoscapes_cvs": true,
-      "has_endoscapes_bbox": true,
-      "labels_available": [
-        "cvs_endoscapes",
-        "anatomy_bbox"
-      ],
-      "frame_counts": {
-        "endoscapes": 123
-      },
-      "source_ids": {
-        "endoscapes_public_ids": [
-          "40"
-        ]
-      },
-      "file_paths": {
-        "endoscapes_frames_dirs": [
-          "/yuming/data/endoscapes-2023/train"
-        ],
-        "endoscapes_metadata_files": [
-          "/yuming/data/endoscapes-2023/all_metadata.csv"
-        ]
-      },
-      "notes": []
-    },
     "ENDO_115": {
       "canonical_id": "ENDO_115",
       "split": "train",
@@ -7734,40 +7676,6 @@
       "file_paths": {
         "endoscapes_frames_dirs": [
           "/yuming/data/endoscapes-2023/train"
-        ],
-        "endoscapes_metadata_files": [
-          "/yuming/data/endoscapes-2023/all_metadata.csv"
-        ]
-      },
-      "notes": []
-    },
-    "VID115": {
-      "canonical_id": "VID115",
-      "split": "test",
-      "split_source": "camma_strategy:CholecT50_splits.json+Endoscapes_splits.json+Cholec80_splits.json",
-      "coverage_group": "G7",
-      "in_cholec80": false,
-      "in_cholect50": false,
-      "in_endoscapes": true,
-      "has_cholec80_cvs": false,
-      "cholec80_tool_presence": false,
-      "has_endoscapes_cvs": true,
-      "has_endoscapes_bbox": true,
-      "labels_available": [
-        "cvs_endoscapes",
-        "anatomy_bbox"
-      ],
-      "frame_counts": {
-        "endoscapes": 123
-      },
-      "source_ids": {
-        "endoscapes_public_ids": [
-          "174"
-        ]
-      },
-      "file_paths": {
-        "endoscapes_frames_dirs": [
-          "/yuming/data/endoscapes-2023/test"
         ],
         "endoscapes_metadata_files": [
           "/yuming/data/endoscapes-2023/all_metadata.csv"
@@ -7938,40 +7846,6 @@
       "file_paths": {
         "endoscapes_frames_dirs": [
           "/yuming/data/endoscapes-2023/train"
-        ],
-        "endoscapes_metadata_files": [
-          "/yuming/data/endoscapes-2023/all_metadata.csv"
-        ]
-      },
-      "notes": []
-    },
-    "VID120": {
-      "canonical_id": "VID120",
-      "split": "test",
-      "split_source": "camma_strategy:CholecT50_splits.json+Endoscapes_splits.json+Cholec80_splits.json",
-      "coverage_group": "G7",
-      "in_cholec80": false,
-      "in_cholect50": false,
-      "in_endoscapes": true,
-      "has_cholec80_cvs": false,
-      "cholec80_tool_presence": false,
-      "has_endoscapes_cvs": true,
-      "has_endoscapes_bbox": true,
-      "labels_available": [
-        "cvs_endoscapes",
-        "anatomy_bbox"
-      ],
-      "frame_counts": {
-        "endoscapes": 363
-      },
-      "source_ids": {
-        "endoscapes_public_ids": [
-          "177"
-        ]
-      },
-      "file_paths": {
-        "endoscapes_frames_dirs": [
-          "/yuming/data/endoscapes-2023/test"
         ],
         "endoscapes_metadata_files": [
           "/yuming/data/endoscapes-2023/all_metadata.csv"
@@ -9339,6 +9213,41 @@
       },
       "notes": []
     },
+    "ENDO_163": {
+      "canonical_id": "ENDO_163",
+      "split": "test",
+      "split_source": "camma_strategy:CholecT50_splits.json+Endoscapes_splits.json+Cholec80_splits.json",
+      "coverage_group": "G7",
+      "in_cholec80": false,
+      "in_cholect50": false,
+      "in_endoscapes": true,
+      "has_cholec80_cvs": false,
+      "cholec80_tool_presence": false,
+      "has_endoscapes_cvs": true,
+      "has_endoscapes_bbox": true,
+      "labels_available": [
+        "cvs_endoscapes",
+        "anatomy_bbox"
+      ],
+      "frame_counts": {
+        "endoscapes": 273
+      },
+      "source_ids": {
+        "endoscapes_public_ids": [
+          "163"
+        ],
+        "camma_cholec_id": "VID82"
+      },
+      "file_paths": {
+        "endoscapes_frames_dirs": [
+          "/yuming/data/endoscapes-2023/test"
+        ],
+        "endoscapes_metadata_files": [
+          "/yuming/data/endoscapes-2023/all_metadata.csv"
+        ]
+      },
+      "notes": []
+    },
     "ENDO_164": {
       "canonical_id": "ENDO_164",
       "split": "test",
@@ -9464,6 +9373,41 @@
         "endoscapes_public_ids": [
           "167"
         ]
+      },
+      "file_paths": {
+        "endoscapes_frames_dirs": [
+          "/yuming/data/endoscapes-2023/test"
+        ],
+        "endoscapes_metadata_files": [
+          "/yuming/data/endoscapes-2023/all_metadata.csv"
+        ]
+      },
+      "notes": []
+    },
+    "ENDO_168": {
+      "canonical_id": "ENDO_168",
+      "split": "test",
+      "split_source": "camma_strategy:CholecT50_splits.json+Endoscapes_splits.json+Cholec80_splits.json",
+      "coverage_group": "G7",
+      "in_cholec80": false,
+      "in_cholect50": false,
+      "in_endoscapes": true,
+      "has_cholec80_cvs": false,
+      "cholec80_tool_presence": false,
+      "has_endoscapes_cvs": true,
+      "has_endoscapes_bbox": true,
+      "labels_available": [
+        "cvs_endoscapes",
+        "anatomy_bbox"
+      ],
+      "frame_counts": {
+        "endoscapes": 273
+      },
+      "source_ids": {
+        "endoscapes_public_ids": [
+          "168"
+        ],
+        "camma_cholec_id": "VID105"
       },
       "file_paths": {
         "endoscapes_frames_dirs": [
@@ -9645,6 +9589,41 @@
       },
       "notes": []
     },
+    "ENDO_174": {
+      "canonical_id": "ENDO_174",
+      "split": "test",
+      "split_source": "camma_strategy:CholecT50_splits.json+Endoscapes_splits.json+Cholec80_splits.json",
+      "coverage_group": "G7",
+      "in_cholec80": false,
+      "in_cholect50": false,
+      "in_endoscapes": true,
+      "has_cholec80_cvs": false,
+      "cholec80_tool_presence": false,
+      "has_endoscapes_cvs": true,
+      "has_endoscapes_bbox": true,
+      "labels_available": [
+        "cvs_endoscapes",
+        "anatomy_bbox"
+      ],
+      "frame_counts": {
+        "endoscapes": 123
+      },
+      "source_ids": {
+        "endoscapes_public_ids": [
+          "174"
+        ],
+        "camma_cholec_id": "VID115"
+      },
+      "file_paths": {
+        "endoscapes_frames_dirs": [
+          "/yuming/data/endoscapes-2023/test"
+        ],
+        "endoscapes_metadata_files": [
+          "/yuming/data/endoscapes-2023/all_metadata.csv"
+        ]
+      },
+      "notes": []
+    },
     "ENDO_175": {
       "canonical_id": "ENDO_175",
       "split": "test",
@@ -9702,6 +9681,41 @@
         "endoscapes_public_ids": [
           "176"
         ]
+      },
+      "file_paths": {
+        "endoscapes_frames_dirs": [
+          "/yuming/data/endoscapes-2023/test"
+        ],
+        "endoscapes_metadata_files": [
+          "/yuming/data/endoscapes-2023/all_metadata.csv"
+        ]
+      },
+      "notes": []
+    },
+    "ENDO_177": {
+      "canonical_id": "ENDO_177",
+      "split": "test",
+      "split_source": "camma_strategy:CholecT50_splits.json+Endoscapes_splits.json+Cholec80_splits.json",
+      "coverage_group": "G7",
+      "in_cholec80": false,
+      "in_cholect50": false,
+      "in_endoscapes": true,
+      "has_cholec80_cvs": false,
+      "cholec80_tool_presence": false,
+      "has_endoscapes_cvs": true,
+      "has_endoscapes_bbox": true,
+      "labels_available": [
+        "cvs_endoscapes",
+        "anatomy_bbox"
+      ],
+      "frame_counts": {
+        "endoscapes": 363
+      },
+      "source_ids": {
+        "endoscapes_public_ids": [
+          "177"
+        ],
+        "camma_cholec_id": "VID120"
       },
       "file_paths": {
         "endoscapes_frames_dirs": [

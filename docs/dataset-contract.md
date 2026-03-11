@@ -10,9 +10,9 @@
 - in_cholec80 / in_cholect50 / in_endoscapes
 - has_cholec80_cvs / has_endoscapes_cvs
 - cholec80_tool_presence
-- endoscapes_public_id
 - labels_available
 - frame_counts
+- source_ids: `endoscapes_public_ids`, `cholec80_video_id`, `cholect50_video_id`, and optionally `camma_cholec_id` (for 13 demoted G7 videos whose CAMMA mapping points to Cholec recordings not in local datasets)
 - file_paths
 
 ## cholect50 npz

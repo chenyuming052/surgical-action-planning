@@ -4,10 +4,10 @@
 
 NeurIPS 2026 submission. Event-centric surgical anticipation under heterogeneous missing supervision across 4 datasets (CholecT50, Cholec80, Cholec80-CVS, Endoscapes2023), 277 videos, 7 coverage groups (G1-G7).
 
-- Research proposal: `docs/surgcast_proposal.md` (v5.4, ~128K — read specific sections, not whole file)
+- Research proposal: `docs/surgcast-proposal.md` (v5.4, ~128K — read specific sections, not whole file)
 - Data audit: `docs/data-analysis.md`
-- NPZ schema: `docs/dataset_contract.md`
-- Experiment plan: `docs/experiment_matrix.md`
+- NPZ schema: `docs/dataset-contract.md`
+- Experiment plan: `docs/experiment-matrix.md`
 
 ## Architecture
 
@@ -56,7 +56,7 @@ Input [B, T, 768] (frozen backbone features)
 - **Naming**: `loss/` singular, `metrics/` `utils/` plural. Files singular (`backbone.py` not `backbones.py`). `hazard_head.py` for model, `hazard_loss.py` for loss (disambiguated).
 - **Imports**: Use `from surgcast.models import SurgCastModel`, not relative across packages.
 - **Config**: YAML in `configs/{data,model,train,eval}/default.yaml`. No OmegaConf yet — plain `yaml.safe_load`.
-- **Data contract**: NPZ per-video labels, HDF5 features. See `docs/dataset_contract.md` for exact array shapes/dtypes.
+- **Data contract**: NPZ per-video labels, HDF5 features. See `docs/dataset-contract.md` for exact array shapes/dtypes.
 - **Masks**: Visibility masks distinguish absent-from-dataset vs unobserved-in-frame. All losses use mask-weighted averaging.
 - **Hazard bins**: K=20 non-uniform intervals. Edges in `configs/data/default.yaml`.
 - **Coverage groups**: G1-G7 with weighted sampling. Probs in `configs/data/default.yaml`.
@@ -116,7 +116,7 @@ Reference project: `/yuming/projects/temporal-perception/MedST/deploy/k8s/` for 
 
 ## Editing Guidelines
 
-- Preserve LaTeX math notation and table formatting in `surgcast_proposal.md`
+- Preserve LaTeX math notation and table formatting in `surgcast-proposal.md`
 - All numerical claims must be verified against `docs/data-analysis.md`
 - When adding new modules: add to the relevant `__init__.py` exports
 - When adding new config keys: update corresponding default YAML

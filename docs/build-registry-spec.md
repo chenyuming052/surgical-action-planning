@@ -20,13 +20,17 @@ The canonical unit is one physical surgery video, identified by `canonical_id`
 ```json
 {
   "schema_version": "surgcast_registry_v1",
-  "build_config": { ... },
+  "build_config": {
+    "n_endoscapes_mapping_pairs_active": 9,
+    "n_endoscapes_mapping_pairs_total": 22,
+    ...
+  },
   "summary": {
     "n_records": 277,
     "group_counts": {"G1": 3, "G2": 42, "G3": 3, "G4": 3, "G5": 2, "G6": 32, "G7": 192},
-    "split_counts": {"train": 191, "val": 41, "test": 45},
+    "split_counts": {"train": 168, "val": 48, "test": 61},
     "group_split_counts": { ... },
-    "fallback_counts_match_proposal": true
+    "fallback_counts_match_proposal": false
   },
   "records": {
     "VID66": { ... },
@@ -52,7 +56,7 @@ Each `records[canonical_id]` entry contains:
 - `has_endoscapes_bbox`
 - `labels_available`
 - `frame_counts`: `{cholec80, cholect50, endoscapes}`
-- `source_ids`: dataset-specific ids
+- `source_ids`: dataset-specific ids (may include `camma_cholec_id` for demoted G7 videos)
 - `file_paths`: dataset-specific roots or files
 - `notes`: warnings such as frame-count mismatch across overlapping datasets
 
@@ -92,7 +96,13 @@ Use:
 - `mapping_to_endoscapes.json`
 - `endoscapes_vid_id_map.csv`
 
-The loader should parse both and produce `public_id -> canonical_id`.
+The loader parses both and produces `public_id -> canonical_id`. The full CAMMA
+mapping contains 22 pairs, but the script **filters** this to only keep entries
+whose Cholec canonical ID actually exists in the local Cholec80/CholecT50
+datasets. This yields 9 active mapping pairs (G1+G3+G4). The remaining 13
+Endoscapes videos whose CAMMA mapping points to absent Cholec recordings are
+assigned `ENDO_xx` canonical IDs instead, with their CAMMA provenance preserved
+in `source_ids.camma_cholec_id`.
 
 ### 5.3 Cholec80-CVS
 
@@ -185,5 +195,9 @@ python scripts/build_registry.py \
 - `summary.group_counts`
 - `summary.split_counts`
 - `summary.group_split_counts`
+- `build_config.n_endoscapes_mapping_pairs_active` (should be 9)
+- `build_config.n_endoscapes_mapping_pairs_total` (should be 22)
 - any `notes` values containing `frame_count_mismatch`
 - whether `split_source` came from CAMMA manifest or fallback quota
+- G7 records should have zero `VIDxx` canonical IDs (all `ENDO_xx`)
+- 13 demoted G7 records should have `source_ids.camma_cholec_id`

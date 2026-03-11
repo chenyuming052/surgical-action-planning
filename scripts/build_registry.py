@@ -650,9 +650,10 @@ def _vid_sort_key(vid: str) -> Tuple[int, str]:
 def synthesize_endoscapes_canonical_id(public_id: str) -> str:
     """Synthesize a canonical ID for Endoscapes videos without a CAMMA mapping.
 
-    This is the standard path for G7 videos: the CAMMA mapping only covers ~9
-    overlapping Cholec-Endoscapes recordings.  The remaining ~192 Endoscapes-only
-    videos receive ENDO_<public_id> canonical IDs.
+    This is the standard path for G7 videos: the CAMMA mapping covers exactly 9
+    overlapping Cholec-Endoscapes recordings (G1+G3+G4) after filtering to local
+    datasets.  The remaining 192 Endoscapes-only videos receive ENDO_<public_id>
+    canonical IDs.
     """
     cleaned = re.sub(r"[^A-Za-z0-9]+", "_", public_id).strip("_")
     return f"ENDO_{cleaned}"
@@ -1042,6 +1043,7 @@ def make_registry_payload(
     summary: Dict[str, Any],
     args: argparse.Namespace,
     public_to_canonical_count: int,
+    full_public_to_canonical_count: int,
     split_manifest_path: Optional[str],
 ) -> Dict[str, Any]:
     return {
@@ -1056,7 +1058,8 @@ def make_registry_payload(
             "strict_counts": bool(args.strict_counts),
             "allow_synthesized_endoscapes_ids": bool(args.allow_synthesized_endoscapes_ids),
             "seed": int(args.seed),
-            "n_endoscapes_mapping_pairs": int(public_to_canonical_count),
+            "n_endoscapes_mapping_pairs_active": int(public_to_canonical_count),
+            "n_endoscapes_mapping_pairs_total": int(full_public_to_canonical_count),
         },
         "summary": summary,
         "records": {k: rows[k].to_dict() for k in sorted(rows, key=_vid_sort_key)},
@@ -1133,8 +1136,9 @@ def parse_args() -> argparse.Namespace:
         "--allow-synthesized-endoscapes-ids",
         action="store_true",
         default=True,
-        help="Synthesize ENDO_<public_id> canonical ids for the ~192 G7 videos "
-        "that have no CAMMA mapping. This is the standard path (default: True).",
+        help="Synthesize ENDO_<public_id> canonical ids for the 192 G7 videos "
+        "that have no active CAMMA mapping (i.e. whose Cholec IDs are not in "
+        "local datasets). This is the standard path (default: True).",
     )
     parser.add_argument(
         "--no-allow-synthesized-endoscapes-ids",
@@ -1169,7 +1173,28 @@ def main() -> None:
             f"--cvs-xlsx path does not exist or is not a file: {args.cvs_xlsx}"
         )
 
-    public_to_canonical = load_endoscapes_mapping(args.mapping_dir)
+    full_public_to_canonical = load_endoscapes_mapping(args.mapping_dir)
+
+    # Discover Cholec80/CT50 BEFORE filtering the CAMMA mapping, so we know
+    # which Cholec canonical IDs actually exist in our local datasets.
+    cholec80 = discover_cholec80(args.cholec80_root)
+    cholect50 = discover_cholect50(args.cholect50_root)
+
+    # Filter CAMMA mapping: only keep entries for Cholec videos actually in our
+    # local datasets. This ensures G7 videos whose CAMMA physical identity maps
+    # to a Cholec recording we don't have get ENDO_xx canonical IDs instead.
+    cholec_canonical_ids = set(cholec80.keys()) | set(cholect50.keys())
+    public_to_canonical = {
+        pub: can for pub, can in full_public_to_canonical.items()
+        if can in cholec_canonical_ids
+    }
+    demoted_mappings = {
+        pub: can for pub, can in full_public_to_canonical.items()
+        if can not in cholec_canonical_ids
+    }
+    if demoted_mappings:
+        print(f"[INFO] {len(demoted_mappings)} CAMMA mappings demoted to ENDO_xx "
+              f"(Cholec IDs not in local datasets): {sorted(demoted_mappings.values())}")
 
     # Split source priority: CAMMA strategy > single manifest file > fallback quotas
     combined_manifest, manifest_path = load_camma_combined_split(
@@ -1184,8 +1209,6 @@ def main() -> None:
         else:
             print("[WARN] No CAMMA split files or manifest found — using fallback quotas (191/41/45)")
 
-    cholec80 = discover_cholec80(args.cholec80_root)
-    cholect50 = discover_cholect50(args.cholect50_root)
     endoscapes = discover_endoscapes(args.endoscapes_root, public_to_canonical)
 
     # Post-discovery sanity checks: ensure roots actually contained data.
@@ -1262,6 +1285,12 @@ def main() -> None:
         allow_synthesized_endoscapes_ids=args.allow_synthesized_endoscapes_ids,
     )
 
+    # Preserve CAMMA provenance for demoted videos (VIDxx → ENDO_xx).
+    for pub_str, cholec_id in demoted_mappings.items():
+        endo_id = synthesize_endoscapes_canonical_id(pub_str)
+        if endo_id in rows:
+            rows[endo_id].source_ids["camma_cholec_id"] = cholec_id
+
     assign_splits(rows, combined_manifest=combined_manifest, manifest_path=manifest_path, seed=args.seed)
     summary = validate_registry(rows, strict_counts=args.strict_counts)
 
@@ -1280,6 +1309,7 @@ def main() -> None:
         summary=summary,
         args=args,
         public_to_canonical_count=len(public_to_canonical),
+        full_public_to_canonical_count=len(full_public_to_canonical),
         split_manifest_path=manifest_path,
     )
 
