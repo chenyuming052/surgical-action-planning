@@ -105,3 +105,6 @@ nsys_*.sqlite
 *.log
 core
 core.*
+
+# ---------- Local Deployment ----------
+/deploy/
