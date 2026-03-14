@@ -2,9 +2,9 @@
 
 ## Project Overview
 
-NeurIPS 2026 submission. Event-centric surgical anticipation under heterogeneous missing supervision across 4 datasets (CholecT50, Cholec80, Cholec80-CVS, Endoscapes2023), 277 videos, 7 coverage groups (G1-G7).
+NeurIPS 2026 submission. Event-centric surgical anticipation under heterogeneous missing supervision across 4 training datasets (CholecT50, Cholec80, Cholec80-CVS, Endoscapes2023), 277 videos, 7 coverage groups (G1-G7), plus HeiChole (24 publicly labeled videos) for external validation.
 
-- Research proposal: `docs/surgcast-proposal.md` (v5.4, ~128K — read specific sections, not whole file)
+- Research proposal: `docs/surgcast-proposal.md` (v8.0, ~130K — read specific sections, not whole file)
 - Data audit: `docs/data-analysis.md`
 - NPZ schema: `docs/dataset-contract.md`
 - Experiment plan: `docs/experiment-matrix.md`
@@ -16,11 +16,11 @@ surgcast/                  # Flat layout (no src/ wrapper)
 ├── models/                # All model code
 │   ├── surgcast.py        # SurgCastModel — top-level wiring
 │   ├── temporal_encoder.py  # CausalTemporalTransformer (causal masked self-attention)
-│   ├── transition.py      # HorizonConditionedTransition (Δ={1,3,5,10}s)
+│   ├── transition.py      # HorizonConditionedTransition / Latent Rollout Module (Δ={1,3,5,10}s)
 │   ├── heads.py           # MultiTaskHeads (triplet_group, instrument, phase, anatomy, cvs)
 │   ├── hazard_head.py     # DualHazardHead (shared trunk → inst + group heads)
 │   ├── backbone.py        # BackboneSpec dataclass (dinov3_vitb16, lemonfm)
-│   └── prior.py           # StructuredPrior (TODO: categorical + Bernoulli)
+│   └── prior.py           # StructuredPrior — optional regularizer (TODO: categorical + Bernoulli)
 ├── loss/                  # Singular (PyTorch convention)
 │   ├── hazard_loss.py     # discrete_time_hazard_nll (vectorized)
 │   └── multitask.py       # masked_bce, masked_ce
@@ -30,7 +30,7 @@ surgcast/                  # Flat layout (no src/ wrapper)
 │   ├── registry.py        # load_registry, filter_by_split
 │   └── npz_loader.py      # load_npz
 ├── metrics/               # Plural (community convention). ALL STUBS.
-│   ├── change.py          # TODO: Change-mAP
+│   ├── change.py          # TODO: Event-AP @horizon, Post-change mAP
 │   ├── ttc.py             # TODO: TTC MAE, C-index, Brier
 │   └── safety.py          # TODO: CVS AUC, CVS MAE
 └── utils/
@@ -43,7 +43,7 @@ surgcast/                  # Flat layout (no src/ wrapper)
 ```
 Input [B, T, 768] (frozen backbone features)
   → CausalTemporalTransformer → h [B, T, 512]
-  → HorizonConditionedTransition (×4 horizons) → pred_state + log_var
+  → Latent Rollout Module / HorizonConditionedTransition (×4 horizons) → pred_state + log_var
   → σ_agg = stack(sqrt(mean(exp(log_var)))) → [B, T, 4]
   → MultiTaskHeads(h) → triplet_group, instrument, phase, anatomy, [cvs]
   → DualHazardHead(h, σ_agg) → hazard_inst, hazard_group [B, T, 20]
@@ -65,7 +65,7 @@ Input [B, T, 768] (frozen backbone features)
 
 | Component | Status | Key gap |
 |-----------|--------|---------|
-| Models | ~95% | `StructuredPrior` is a stub |
+| Models | ~95% | `StructuredPrior` is a stub (optional regularizer) |
 | Losses | ~90% | Focal loss, prior KL not wired |
 | Datasets | ~95% | Needs real data to test |
 | Metrics | 0% | All 3 modules are stubs |
@@ -83,7 +83,7 @@ Execution order: `build_registry → preprocess_* → extract_features → build
 168 train / 48 val / 61 test. Per group:
 - G1: 3/0/0, G2: 28/5/9, G3: 3/0/0, G4: 3/0/0, G5: 1/0/1, G6: 17/4/11, G7: 113/39/40
 
-Evaluation tiers (test counts): Tier 1=10, Tier 2a=51, Tier 2b=9, Tier 3=20, Tier 4=21, Tier 5=40.
+Evaluation tiers (test counts): Tier 1=10, Tier 2a=51 (Auxiliary), Tier 2b=9 (Auxiliary), Tier 3=20, Tier 4=21, Tier 5=40, Tier 6=24 (HeiChole external).
 All tiers meet or exceed original proposal estimates. G3-test=0 (all in train by CAMMA).
 
 ## Engineering Constraints
@@ -91,7 +91,7 @@ All tiers meet or exceed original proposal estimates. G3-test=0 (all in train by
 - Build canonical registry BEFORE any split or feature extraction
 - Cholec80-CVS: do NOT use official 85% truncation or 50/15/15 split — parse XLSX directly
 - All priors computed from training split only
-- Change task uses dual-event TTC: instrument-set + triplet-group
+- Change task uses dual-event TTC: instrument-set (primary) + triplet-group (secondary)
 - Anatomy observation mask only on bbox-annotated frames (Endoscapes)
 - Hazard loss: L_hazard = L_inst + η·L_group (η=1.0 default)
 - Targets with value -1 are ignored (masked out) in cross-entropy losses

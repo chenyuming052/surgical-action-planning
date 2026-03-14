@@ -108,3 +108,6 @@ core.*
 
 # ---------- Local Deployment ----------
 /deploy/
+
+# ---------- Presentation ----------
+/presentation/

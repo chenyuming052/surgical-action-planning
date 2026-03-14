@@ -1,12 +1,12 @@
 # Surgical Video Dataset Audit for Action Planning and Navigation
 
-Date: 2026-03-10
+Date: 2026-03-13
 Target task: action planning and navigation in image-guided surgery
-Audit scope: 9 local datasets under `/yuming/data`
+Audit scope: 10 local datasets under `/yuming/data`
 
 ## Executive Summary
 
-This document summarizes on-disk counts and official-source cross-checks for nine local surgical video datasets relevant to action planning and navigation.
+This document summarizes on-disk counts and official-source cross-checks for ten local surgical video datasets relevant to action planning and navigation.
 
 1. **Cholec80** is a full-procedure workflow dataset for laparoscopic cholecystectomy, and its dense phase labels are not aligned one-to-one with the extracted 1 fps frame folders.
 2. **Cholec80-CVS** adds CVS safety annotations on top of all **80 Cholec80 videos**, but the local copy is only a raw XLSX workbook; the official code links it back to Cholec80, truncates to the last 15% before clip/cut, and binarizes criterion scores.
@@ -16,15 +16,17 @@ This document summarizes on-disk counts and official-source cross-checks for nin
 6. **CholecInstanceSeg** and **CholecSeg8k** are spatial-supervision datasets and are not direct action-planning datasets.
 7. **GraSP** provides hierarchical procedure representation annotations, and the local copy contains **13** cases from robotic prostatectomy.
 8. **AutoLaparo** is present locally at **101 GB** with 21 full-length laparoscopic hysterectomy videos, 300 motion-prediction clips, and 1,800 segmentation frames.
+9. **HeiChole** is a multi-task laparoscopic cholecystectomy dataset from the EndoVis 2019 challenge with **24 videos**, **1,836,369** annotated frames, and concurrent frame-level annotations for 7 surgical phases, 7 instrument categories (21 fine-grained types), 4 action types, and 5-dimensional surgical skill scores. Phase annotations are Cholec80-compatible.
 
 ## 1. Scope and Coverage
 
-This audit covers 9 local datasets under `/yuming/data`.
+This audit covers 10 local datasets under `/yuming/data`.
 
 - `AutoLaparo` is part of the local dataset set.
 - `Cholec80-CVS` is annotation-only locally and depends on the original Cholec80 videos plus `phase_annotations/` for the official preprocessing pipeline.
 - `CholecTrack20` counts in this document are dataset-wide totals unless a split is explicitly named.
 - `Endoscapes2023` contains 58,813 local JPGs; the 228-frame discrepancy is confined to `test/annotation_coco_vid.json`.
+- `HeiChole` is a standalone cholecystectomy dataset from 3 Heidelberg-affiliated hospitals; no video-ID overlap with any CAMMA dataset.
 
 ## 2. Verified Local Snapshot
 
@@ -39,6 +41,7 @@ This audit covers 9 local datasets under `/yuming/data`.
 | CholecTrack20 | 34G | 20 videos, 35,009 annotated frames, 65,247 detections, 20 JSONs | full-procedure tool tracking and spatial memory | verb/target labels appear only in 8 of the 14 CholecT50-overlap videos (~37% of detections) |
 | GraSP | 260G | 13 cases, 3,495,415 JPGs, 8 annotation JSONs, 3,449 segmentation PNGs | hierarchical representation pretraining | local copy is partial and robotic |
 | AutoLaparo | 101G | 21 videos (83,243 1fps frames), 300 motion clips, 1,800 seg frames + masks | camera-motion prediction and anatomy segmentation | laparoscopic hysterectomy, not cholecystectomy |
+| HeiChole | 212G | 24 videos (SD+HD), 1,836,369 annotated frames, 4 annotation layers + skill | multi-task workflow (phase, instrument, action, skill) | Cholec80-compatible phases; official challenge split is 24 train + 9 test but only 24 training videos are publicly available; mixed 25/50 fps; extremely large video files |
 
 ## 3. Dataset-by-Dataset Audit
 
@@ -959,6 +962,365 @@ Split: train clips 001-170 (1,020 images) / val 171-227 (342 images) / test 228-
 - Provides instrument + anatomy segmentation with shaft/manipulator distinction
 - Introduces a procedure-domain gap because it covers laparoscopic hysterectomy rather than cholecystectomy; this affects direct label pooling
 
+### 3.10 HeiChole
+
+#### Official scope cross-check
+
+The HeiChole dataset was released as part of the **EndoVis Sub-challenge Surgical Workflow and Skill Analysis** at MICCAI 2019, organized by NCT Dresden and University Hospital Heidelberg. The companion paper (Wagner et al., Medical Image Analysis 2023) describes four concurrent recognition tasks on laparoscopic cholecystectomy videos: phase segmentation, instrument presence detection, action recognition, and surgical skill assessment. The dataset was collected from **three hospitals**: 15 videos from University Hospital Heidelberg, 15 from Salem Hospital, and 3 from Sinsheim Hospital (33 total).
+
+The official challenge split is **24 training + 9 test** videos. Test labels were not publicly released. The local copy contains the **24 training videos** only. The 24 videos come from all three hospital sites.
+
+Challenge platform: Synapse.org. License: CC BY-NC (post-challenge publication).
+
+#### Local structure
+
+```text
+/yuming/data/HeiChole/
+├── Videos/
+│   ├── Full/                              # 24 SD MP4s + HD/ subfolder (24 HD MP4s)
+│   └── Skill/                             # 48 phase-clipped MP4s (calot + dissection)
+├── Annotations/
+│   ├── Phase/                             # 24 CSVs + Raw_annotations/
+│   ├── Instrument/                        # 24 category CSVs + 24 detailed CSVs
+│   ├── Action/                            # 24 basic CSVs + 24 detailed CSVs
+│   └── Skill/                             # 72 CSVs (full + calot + dissection per video)
+├── Evaluation_Scripts/                    # 4 Python eval scripts
+├── EndoVisWorkflow_ReadMe.pdf
+├── ChallengeDesign_WorkflowSkill.pdf
+├── Presentation_EndoVis_SurgicalWorkflowandSkill2019.pdf
+└── SYNAPSE_METADATA_MANIFEST.tsv
+```
+
+#### Verified local facts
+
+| Property | Value |
+|---|---:|
+| Full videos (SD) | 24 |
+| Full videos (HD) | 24 |
+| Skill phase videos (calot + dissection) | 48 |
+| Total annotated frames | 1,836,369 |
+| Mean frames/video | 76,515 |
+| Median frames/video | 61,076 |
+| Min frames/video | 31,816 (Hei-Chole4) |
+| Max frames/video | 255,120 (Hei-Chole17) |
+| SD video total size | 61.85 GB |
+| HD video total size | 107.82 GB |
+| Skill video total size | 42.17 GB |
+| Total dataset size | ~212 GB |
+
+All 24 videos have consistent frame counts across Phase, Instrument, and Action annotations (verified per-video).
+
+#### Per-video frame counts
+
+| Video | Frames | Phase transitions | Phases present |
+|---|---:|---:|---|
+| Hei-Chole1 | 54,930 | 7 | 0,1,2,3,4,5,6 |
+| Hei-Chole2 | 50,913 | 6 | 0,1,2,3,4,5,6 |
+| Hei-Chole3 | 71,976 | 8 | 0,1,2,3,4,5,6 |
+| Hei-Chole4 | 31,816 | 6 | 0,1,2,3,4,5,6 |
+| Hei-Chole5 | 78,234 | 12 | 0,1,2,3,4,5,6 |
+| Hei-Chole6 | 72,211 | 6 | 0,1,2,3,4,5,6 |
+| Hei-Chole7 | 104,670 | 10 | 0,1,2,3,4,5,6 |
+| Hei-Chole8 | 42,791 | 10 | 0,1,2,3,4,5,6 |
+| Hei-Chole9 | 67,222 | 8 | 0,1,2,3,4,5,6 |
+| Hei-Chole10 | 44,746 | 7 | 0,1,2,3,4,6 |
+| Hei-Chole11 | 35,312 | 9 | 0,1,2,3,4,5,6 |
+| Hei-Chole12 | 44,774 | 8 | 0,1,2,3,4,5,6 |
+| Hei-Chole13 | 49,447 | 6 | 0,1,2,3,4,5,6 |
+| Hei-Chole14 | 53,257 | 10 | 0,1,2,3,4,5,6 |
+| Hei-Chole15 | 49,489 | 7 | 0,1,2,3,4,6 |
+| Hei-Chole16 | 184,700 | 10 | 0,1,2,3,4,5,6 |
+| Hei-Chole17 | 255,120 | 11 | 0,1,2,3,4,5,6 |
+| Hei-Chole18 | 77,620 | 6 | 0,1,2,3,4,5,6 |
+| Hei-Chole19 | 94,544 | 8 | 0,1,2,3,4,5,6 |
+| Hei-Chole20 | 83,048 | 6 | 0,1,2,3,4,5,6 |
+| Hei-Chole21 | 32,759 | 5 | 0,1,2,3,4,6 |
+| Hei-Chole22 | 35,542 | 5 | 0,1,2,3,4,6 |
+| Hei-Chole23 | 91,534 | 6 | 0,1,2,3,4,5,6 |
+| Hei-Chole24 | 129,714 | 7 | 0,1,2,3,4,5,6 |
+
+Verified video resolution and frame rate (from MP4 moov atom metadata):
+
+| Videos | Resolution | FPS | Notes |
+|---|---|---:|---|
+| 1–12 | 960×540 (SD) / 1920×1080 (HD) | 25 | True SD/HD pair; HD files ~5× larger |
+| 13, 14, 21 | 720×576 (PAL) | 25 | SD and HD files identical (no upscaled version exists) |
+| 15, 22 | 1920×1080 | 25 | Natively full-HD; SD and HD files identical |
+| 16–20, 23–24 | 1920×1080 | 50 | Natively full-HD at 50 fps; SD and HD files identical |
+
+Summary: **17 videos @25 fps, 7 videos @50 fps**. Annotations are per-frame at native fps.
+
+#### Video file size comparison (SD vs HD)
+
+| Video | SD (MB) | HD (MB) |
+|---|---:|---:|
+| Hei-Chole1 | 807.8 | 4,303.0 |
+| Hei-Chole2 | 751.8 | 4,712.2 |
+| Hei-Chole3 | 947.1 | 6,386.2 |
+| Hei-Chole4 | 404.7 | 2,384.1 |
+| Hei-Chole5 | 969.9 | 4,912.1 |
+| Hei-Chole6 | 919.4 | 6,116.0 |
+| Hei-Chole7 | 1,493.2 | 10,497.1 |
+| Hei-Chole8 | 517.2 | 3,023.8 |
+| Hei-Chole9 | 769.4 | 5,228.9 |
+| Hei-Chole10 | 625.3 | 3,348.8 |
+| Hei-Chole11 | 474.5 | 2,429.4 |
+| Hei-Chole12 | 596.3 | 3,005.3 |
+| Hei-Chole13 | 817.4 | 817.4 |
+| Hei-Chole14 | 747.6 | 747.6 |
+| Hei-Chole15 | 5,507.8 | 5,507.8 |
+| Hei-Chole16 | 8,066.9 | 8,066.9 |
+| Hei-Chole17 | 12,144.1 | 12,144.1 |
+| Hei-Chole18 | 3,566.4 | 3,566.4 |
+| Hei-Chole19 | 5,177.3 | 5,177.3 |
+| Hei-Chole20 | 2,921.7 | 2,921.7 |
+| Hei-Chole21 | 598.2 | 598.2 |
+| Hei-Chole22 | 2,925.7 | 2,925.7 |
+| Hei-Chole23 | 5,952.5 | 5,952.5 |
+| Hei-Chole24 | 5,636.7 | 5,636.7 |
+
+For videos 1–12 (960×540 SD / 1920×1080 HD), HD files are 4–7× larger than SD. For videos 13, 14, 21 (720×576 PAL) and 15–20, 22–24 (1920×1080 native), SD and HD files are identical in size — no separate downsampled SD variant exists for these videos.
+
+#### Phase annotations (7 phases)
+
+Format: `<frame #>,<phase id>` per line.
+
+| ID | Phase | Frames | % | #Videos |
+|---|---|---:|---:|---:|
+| 0 | Preparation | 126,862 | 6.91% | 24/24 |
+| 1 | Calot triangle dissection | 852,118 | 46.40% | 24/24 |
+| 2 | Clipping and cutting | 158,519 | 8.63% | 24/24 |
+| 3 | Gallbladder dissection | 327,289 | 17.82% | 24/24 |
+| 4 | Gallbladder packaging | 73,798 | 4.02% | 24/24 |
+| 5 | Cleaning and coagulation | 235,407 | 12.82% | 20/24 |
+| 6 | Gallbladder retraction | 62,376 | 3.40% | 24/24 |
+
+Phase 5 (Cleaning and coagulation) is absent from 4 videos: Hei-Chole10, 15, 21, 22. The dominant phase is Calot triangle dissection (46.4% of all frames).
+
+Phase duration variability:
+
+| Phase | Min | Max | Mean | Std | CV% |
+|---|---:|---:|---:|---:|---:|
+| Preparation | 2,336 | 12,740 | 5,286 | 2,325 | 44.0% |
+| Calot triangle dissection | 7,065 | 145,476 | 35,505 | 31,394 | 88.4% |
+| Clipping and cutting | 1,999 | 14,090 | 6,605 | 3,525 | 53.4% |
+| Gallbladder dissection | 2,850 | 56,080 | 13,637 | 10,830 | 79.4% |
+| Gallbladder packaging | 1,264 | 6,554 | 3,075 | 1,443 | 46.9% |
+| Cleaning and coagulation | 1,570 | 27,898 | 11,770 | 7,172 | 60.9% |
+| Gallbladder retraction | 28 | 9,444 | 2,599 | 2,423 | 93.2% |
+
+The Calot triangle dissection phase has extremely high variability (CV=88.4%, range 7K–145K frames), reflecting wide differences in case complexity.
+
+#### Phase ontology compatibility with Cholec80
+
+The README states that HeiChole phases are **compatible with the Cholec80 dataset** (Twinanda et al., TMI 2017). Direct mapping:
+
+| HeiChole ID | HeiChole Phase | Cholec80 Phase |
+|---|---|---|
+| 0 | Preparation | Preparation |
+| 1 | Calot triangle dissection | CalotTriangleDissection |
+| 2 | Clipping and cutting | ClippingCutting |
+| 3 | Galbladder dissection | GallbladderDissection |
+| 4 | Galbladder packaging | GallbladderPackaging |
+| 5 | Cleaning and coagulation | CleaningCoagulation |
+| 6 | Galbladder retraction | GallbladderRetraction |
+
+This is a direct 1-to-1 semantic mapping (same 7 phases, same integer IDs). Note: HeiChole spells "Galbladder" (sic) in the README; Cholec80 uses "Gallbladder".
+
+#### Instrument annotations (7 categories, 21 fine-grained types)
+
+Two files per video: `_Annotation_Instrument.csv` (7-category binary) and `_Annotation_Instrument_Detailed.csv` (21-type binary + undefined shaft).
+
+Format: `<frame #>,<cat 0 visible?>,...,<cat 20 visible?>` (22 columns for category file; 32 columns for detailed file).
+
+**Category-level presence** (1,836,369 frames):
+
+| ID | Category | Frames | % |
+|---|---|---:|---:|
+| 0 | Grasper | 1,196,122 | 65.14% |
+| 1 | Clipper | 66,890 | 3.64% |
+| 2 | Coagulation | 899,765 | 49.00% |
+| 3 | Scissors | 46,187 | 2.52% |
+| 4 | Suction-irrigation | 132,768 | 7.23% |
+| 5 | Specimen bag | 180,240 | 9.82% |
+| 6 | Stapler | 2,539 | 0.14% |
+| 20 | Undefined instrument shaft | 26,861 | 1.46% |
+
+Category columns 7–19 in the CSV are truly zero (reserved). Category ID 20 (the last instrument column, index 21 in the CSV) corresponds to "Undefined instrument shaft" — matching tool ID 30 in the detailed files.
+
+**Fine-grained instrument type presence** (1,836,369 frames):
+
+| ID | Instrument | Cat | Frames | % |
+|---|---|---:|---:|---:|
+| 0 | Curved atraumatic grasper | 0 | 191,777 | 10.44% |
+| 1 | Toothed grasper | 0 | 60,474 | 3.29% |
+| 2 | Fenestrated toothed grasper | 0 | 87,423 | 4.76% |
+| 3 | Atraumatic grasper | 0 | 924,709 | 50.36% |
+| 4 | Overholt | 0 | 28,737 | 1.56% |
+| 5 | LigaSure | 2 | 19,956 | 1.09% |
+| 6 | Electric hook | 2 | 866,223 | 47.17% |
+| 7 | Scissors | 3 | 46,187 | 2.52% |
+| 8 | Clip-applier (metal) | 1 | 58,818 | 3.20% |
+| 9 | Clip-applier (Hem-O-Lok) | 1 | 8,072 | 0.44% |
+| 10 | Swab grasper | 0 | 22,379 | 1.22% |
+| 11 | Argon beamer | 2 | 13,586 | 0.74% |
+| 12 | Suction-irrigation | 4 | 132,768 | 7.23% |
+| 13 | Specimen bag | 5 | 180,240 | 9.82% |
+| 14 | Tiger mouth forceps | 0 | 13,587 | 0.74% |
+| 15 | Claw forceps | 0 | 4,506 | 0.25% |
+| 16 | Atraumatic grasper short | 0 | 46,240 | 2.52% |
+| 17 | Crocodile forceps | 0 | 29,494 | 1.61% |
+| 18 | Flat grasper | 0 | 5,496 | 0.30% |
+| 19 | Pointed forceps | 0 | 5,464 | 0.30% |
+| 20 | Stapler | 6 | 2,539 | 0.14% |
+| 30 | Undefined instrument shaft | 20 | 26,861 | 1.46% |
+
+The Grasper category alone has **10 subtypes** — a much finer granularity than any CAMMA dataset. The dominant instruments are Atraumatic grasper (50.4%) and Electric hook (47.2%).
+
+**Simultaneous instrument count** (category level):
+
+| # Instruments | Frames | % |
+|---:|---:|---:|
+| 0 | 283,592 | 15.44% |
+| 1 | 638,802 | 34.79% |
+| 2 | 864,427 | 47.07% |
+| 3 | 41,337 | 2.25% |
+| 4 | 8,211 | 0.45% |
+
+Most frames (47.1%) have exactly 2 instruments visible simultaneously.
+
+#### Action annotations (4 types, multi-label)
+
+Two files per video: `_Annotation_Action.csv` (4-action binary) and `_Annotation_Action_Detailed.csv` (per-hand: left/right/assistant × 4 actions = 12 columns).
+
+Format: `<frame #>,<grasp>,<hold>,<cut>,<clip>`.
+
+| ID | Action | Frames | % |
+|---|---|---:|---:|
+| 0 | Grasp | 22,315 | 1.22% |
+| 1 | Hold | 1,440,974 | 78.47% |
+| 2 | Cut | 5,448 | 0.30% |
+| 3 | Clip | 6,883 | 0.37% |
+
+- No action (idle): 388,483 frames (21.15%)
+- Multi-action frames: 27,733 frames (1.51%)
+
+The action label space is extremely unbalanced: Hold dominates at 78.5%, while Cut and Clip together account for less than 0.7% of frames. This coarse 4-class action vocabulary is much less expressive than CholecT50's 10-verb × 15-target triplet space.
+
+#### Phase–instrument co-occurrence
+
+Percentage of frames within each phase where each instrument category is present:
+
+| Phase | Grasper | Clipper | Coagul | Scissors | Suction | SpecBag | Stapler |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Preparation | 0.0% | 0.0% | 0.0% | 0.0% | 0.0% | 0.0% | 0.0% |
+| Calot | 78.6% | 0.4% | 70.8% | 0.1% | 2.3% | 0.0% | 0.0% |
+| Clip & Cut | 72.6% | 36.4% | 1.8% | 17.8% | 1.4% | 0.0% | 1.6% |
+| GB dissection | 52.9% | 0.3% | 77.8% | 3.4% | 7.7% | 0.2% | 0.0% |
+| GB packaging | 91.3% | 0.0% | 0.0% | 0.0% | 5.6% | 93.7% | 0.0% |
+| Clean & Coag | 68.8% | 2.1% | 16.5% | 2.4% | 34.5% | 36.3% | 0.0% |
+| GB retraction | 14.0% | 0.0% | 0.0% | 0.0% | 0.0% | 40.2% | 0.0% |
+
+Phase–instrument patterns are clinically coherent: Calot and GB dissection use grasper + coagulation (electric hook); Clip & Cut uses clipper + scissors; GB packaging uses specimen bag + grasper; Cleaning uses suction-irrigation.
+
+#### Skill annotations (5 dimensions, 1–5 ordinal scale)
+
+Each video has 3 skill CSVs: full video, Calot phase, and Dissection phase. Each contains 5 comma-separated values: `depth_perception, bimanual_dexterity, efficiency, tissue_handling, case_difficulty`.
+
+**Full-video skill scores:**
+
+| Video | Depth | Bimanual | Efficiency | Tissue | Difficulty | Mean |
+|---|---:|---:|---:|---:|---:|---:|
+| Hei-Chole1 | 5 | 5 | 4 | 3 | 4 | 4.2 |
+| Hei-Chole2 | 4 | 4 | 5 | 3 | 3 | 3.8 |
+| Hei-Chole3 | 4 | 3 | 3 | 3 | 3 | 3.2 |
+| Hei-Chole4 | 5 | 5 | 5 | 3 | 1 | 3.8 |
+| Hei-Chole5 | 4 | 4 | 4 | 3 | 5 | 4.0 |
+| Hei-Chole6 | 5 | 5 | 4 | 3 | 3 | 4.0 |
+| Hei-Chole7 | 4 | 4 | 3 | 4 | 3 | 3.6 |
+| Hei-Chole8 | 4 | 5 | 5 | 5 | 2 | 4.2 |
+| Hei-Chole9 | 4 | 4 | 4 | 4 | 2 | 3.6 |
+| Hei-Chole10 | 5 | 4 | 5 | 4 | 2 | 4.0 |
+| Hei-Chole11 | 5 | 5 | 5 | 4 | 1 | 4.0 |
+| Hei-Chole12 | 5 | 4 | 3 | 3 | 1 | 3.2 |
+| Hei-Chole13 | 5 | 4 | 5 | 5 | 1 | 4.0 |
+| Hei-Chole14 | 5 | 4 | 4 | 4 | 1 | 3.6 |
+| Hei-Chole15 | 5 | 4 | 4 | 5 | 1 | 3.8 |
+| Hei-Chole16 | 5 | 4 | 4 | 3 | 3 | 3.8 |
+| Hei-Chole17 | 4 | 5 | 3 | 3 | 3 | 3.6 |
+| Hei-Chole18 | 3 | 4 | 3 | 4 | 1 | 3.0 |
+| Hei-Chole19 | 4 | 5 | 5 | 4 | 1 | 3.8 |
+| Hei-Chole20 | 5 | 4 | 5 | 5 | 1 | 4.0 |
+| Hei-Chole21 | 5 | 5 | 5 | 4 | 2 | 4.2 |
+| Hei-Chole22 | 5 | 4 | 5 | 4 | 2 | 4.0 |
+| Hei-Chole23 | 4 | 5 | 4 | 4 | 2 | 3.8 |
+| Hei-Chole24 | 4 | 4 | 4 | 3 | 4 | 3.8 |
+
+**Aggregate statistics:**
+
+| Dimension | Mean | Std | Min | Max |
+|---|---:|---:|---:|---:|
+| Depth perception | 4.50 | 0.58 | 3 | 5 |
+| Bimanual dexterity | 4.33 | 0.55 | 3 | 5 |
+| Efficiency | 4.21 | 0.76 | 3 | 5 |
+| Tissue handling | 3.75 | 0.72 | 3 | 5 |
+| Case difficulty | 2.17 | 1.14 | 1 | 5 |
+
+Case difficulty is heavily skewed low (9/24 rated 1, only 1/24 rated 5). Skill scores for Calot phase are slightly lower than Dissection phase across Depth, Bimanual, and Efficiency (by 0.1–0.3 points), while Tissue handling is comparable.
+
+**Score distributions (full video):**
+
+- Depth perception: score 3=1, 4=10, 5=13
+- Bimanual dexterity: score 3=1, 4=14, 5=9
+- Efficiency: score 3=5, 4=9, 5=10
+- Tissue handling: score 3=10, 4=10, 5=4
+- Case difficulty: score 1=9, 2=6, 3=6, 4=2, 5=1
+
+#### Evaluation scripts
+
+Four evaluation scripts are provided:
+
+| Script | Task | Metric | Ranking metric |
+|---|---|---|---|
+| `EvalPhase.py` | Phase segmentation | per-class F1, accuracy | macro F1 |
+| `EvalInstrument.py` | Instrument presence | per-class F1, accuracy | macro F1 |
+| `EvalAction.py` | Action recognition | per-class F1, accuracy | macro F1 |
+| `EvalSkill.py` | Skill assessment | per-dimension MAE | overall MAE |
+
+All recognition scripts use `sklearn.metrics.f1_score` with `average=None` and compute macro F1 over present classes. The skill script computes absolute error between predicted and ground-truth ordinal scores.
+
+#### Raw annotations
+
+The `Annotations/Phase/Raw_annotations/` directory contains **67 files** (CSV + PNG pairs per video), providing the original annotator markings before consensus.
+
+#### Loader caveats
+
+- **Official train/test split**: the challenge defined 24 training + 9 test videos. Only the 24 training videos and their labels are publicly available; test labels were withheld. The local copy contains the 24 training videos. Any evaluation requires defining a custom split within these 24 videos.
+- **Mixed frame rates**: 17 videos are recorded at 25 fps and 7 videos (16–20, 23–24) at 50 fps. Annotations are per-frame at native fps — no 1 fps extraction. Frame counts per video must be divided by the correct fps to compute durations.
+- **Extra-abdominal frames**: censored as all-white RGB(255,255,255) frames. These frames retain annotations (typically Phase 0 or Phase 6) and should be handled during training.
+- **Instrument columns**: the category-level CSV has 22 columns (frame + 21 slots for categories 0–20). Columns 7–19 are reserved (all zeros). Column 20 (category ID 20) contains 26,861 non-zero frames for "Undefined instrument shaft". The detailed CSV has 32 columns (frame + 31 slots for types 0–30).
+- **Video length variability**: an 8× range (31K–255K frames) means fixed-length sequence sampling will waste most frames of long videos or require many windows.
+
+#### Data integrity summary
+
+| Check | Result |
+|---|---|
+| Phase/Instrument/Action frame counts match per video | All 24 consistent |
+| All 24 phase CSVs present | ✓ |
+| All 24 instrument CSVs + 24 detailed CSVs present | ✓ |
+| All 24 action CSVs + 24 detailed CSVs present | ✓ |
+| All 72 skill CSVs present (3 per video) | ✓ |
+| All 24 SD + 24 HD + 48 skill videos present | ✓ |
+
+#### Task relevance
+
+- Provides **Cholec80-compatible phase labels** on an independent Heidelberg cohort (24 videos from 3 hospitals), enabling cross-center phase recognition evaluation
+- Adds **fine-grained instrument subtype labels** (21 types vs Cholec80's 7 binary tool presence columns) — the most detailed instrument taxonomy in the local collection
+- Adds **frame-level action labels** (4 action types, multi-label, per-hand in detailed version) — bridges between Cholec80's tool-only supervision and CholecT50's triplet supervision
+- Provides **surgical skill annotations** (video-level ordinal, 5 dimensions) — unique in the local collection; could support difficulty-aware training or stratified evaluation
+- As a non-CAMMA dataset from a different hospital network, HeiChole is **fully independent** of all CAMMA datasets — making it suitable as an additional external test set for phase recognition and instrument detection without any video-ID overlap risk
+- Key limitations: no spatial annotations (no bounding boxes or segmentation), no verb-target triplets, coarse 4-class action vocabulary, only 24 of 33 challenge videos publicly available (test labels withheld), mixed 25/50 fps requiring per-video handling, and extremely large video files
+
 ## 4. Cross-Dataset Integration Risks
 
 ### 4.1 Video overlap and leakage
@@ -982,6 +1344,11 @@ Exact overlaps in the local environment (Endoscapes rows use CAMMA official vide
 | Cholec80 vs CholecTrack20 | 15 |
 | Cholec80-CVS vs CholecTrack20 | 15 |
 | CholecT50 vs CholecTrack20 | 14 |
+| HeiChole vs any CAMMA dataset | **0** |
+| HeiChole vs AutoLaparo | 0 |
+| HeiChole vs GraSP | 0 |
+
+HeiChole is from Heidelberg-affiliated hospitals, entirely independent of the Strasbourg-based CAMMA datasets and all other local datasets. It is **overlap-free** and can be used as an external validation set without leakage risk.
 
 These overlaps place leakage control at the **original video ID level** for pretraining, fine-tuning, and evaluation.
 
@@ -993,6 +1360,7 @@ These overlaps place leakage control at the **original video ID level** for pret
 - CholecInstanceSeg includes `snare`, which is absent from Cholec80 and CholecT50
 - Endoscapes uses anatomy-plus-tool categories rather than triplets or dense workflow states
 - GraSP labels phases, steps, instruments, and atomic actions, but in robotic prostatectomy
+- HeiChole phases are Cholec80-compatible (same 7 IDs, same semantics). HeiChole instrument categories (7 types: Grasper, Clipper, Coagulation, Scissors, Suction-irrigation, Specimen bag, Stapler) overlap substantially with Cholec80's 7 binary tool columns but differ in naming and granularity: Cholec80 separates Hook and Bipolar under coagulation, whereas HeiChole merges them into "Coagulation instruments" at the category level but preserves LigaSure, Electric hook, and Argon beamer at the fine-grained level. HeiChole's 4 action types (Grasp, Hold, Cut, Clip) are a strict subset of CholecT50's 10 verbs.
 
 A single unified label space requires an explicit ontology table.
 
@@ -1006,16 +1374,18 @@ A single unified label space requires an explicit ontology table.
 - CholecTrack20 JSON keys: original 25 fps frame numbers sampled roughly every second
 - GraSP long-term labels: 1-second intervals
 - GraSP short-term labels: 35-second intervals
+- HeiChole annotations: native video frame rate (25 fps for 17 videos, 50 fps for 7 videos: 16–20, 23–24); no 1 fps extraction — annotations cover every frame
 
 Sampling alignment is a primary preprocessing requirement for this dataset collection.
 
 ### 4.4 Domain mismatch
 
-- Cholec80, Cholec80-CVS, CholecT50, CholecSeg8k, CholecInstanceSeg, Endoscapes2023, CholecTrack20: laparoscopic cholecystectomy
+- Cholec80, Cholec80-CVS, CholecT50, CholecSeg8k, CholecInstanceSeg, Endoscapes2023, CholecTrack20: laparoscopic cholecystectomy (Strasbourg / CAMMA)
+- HeiChole: laparoscopic cholecystectomy (Heidelberg, 3 hospitals)
 - AutoLaparo: laparoscopic hysterectomy
 - GraSP: robot-assisted radical prostatectomy
 
-GraSP and AutoLaparo differ from the cholecystectomy datasets in procedure and platform, so their labels align more naturally with representation learning or auxiliary pretraining than with direct label pooling.
+HeiChole is the same procedure type (cholecystectomy) as the CAMMA datasets but from a different center network. This creates a natural domain-shift evaluation scenario: same procedure, different hospitals, different surgeons, different equipment. GraSP and AutoLaparo differ from the cholecystectomy datasets in procedure and platform, so their labels align more naturally with representation learning or auxiliary pretraining than with direct label pooling.
 
 ### 4.5 CAMMA split-combination reference
 
@@ -1053,6 +1423,7 @@ The local dataset collection provides the following action-planning-related supe
 3. **Cholec80-CVS** for clip/cut readiness and CVS safety gating
 4. **CholecTrack20** for tool-state continuity and action context
 5. **GraSP** for auxiliary hierarchical pretraining signals
+6. **HeiChole** for external validation of phase recognition and instrument detection (overlap-free Heidelberg cohort)
 
 ### 5.2 Navigation-related supervision coverage
 
@@ -1150,6 +1521,7 @@ than with fully supervised autonomous navigation policy learning from supervisio
 - `/yuming/data/cholecTrack20`
 - `/yuming/data/GraSP`
 - `/yuming/data/AutoLaparo`
+- `/yuming/data/HeiChole`
 - `/yuming/repos/CHOLEC80-CVS-PUBLIC`
 - `/yuming/repos/camma_dataset_overlaps` (Cholec80 standard split, CAMMA overlap analysis)
 - `/yuming/repos/cholect50/docs/README-Format.md` (annotation vector field documentation)
@@ -1169,5 +1541,7 @@ than with fully supervised autonomous navigation policy learning from supervisio
 - AutoLaparo official repository: <https://github.com/ziyiwangx/AutoLaparo>
 - AutoLaparo official website: <https://autolaparo.github.io>
 - AutoLaparo paper: <https://arxiv.org/abs/2208.02049>
+- HeiChole paper (EndoVis 2019 challenge): Wagner et al., "Comparative validation of machine learning algorithms for surgical workflow and skill analysis with the HeiChole benchmark", Medical Image Analysis, 2023. <https://doi.org/10.1016/j.media.2023.102770>
+- HeiChole challenge platform: <https://www.synapse.org/#!Synapse:syn18824884/wiki/592586>
 - M2CAI challenge: <http://camma.u-strasbg.fr/m2cai2016/index.php/program-challenge/>
 - Walimbe et al. (MICCAI 2025): <https://arxiv.org/abs/2507.05020>
