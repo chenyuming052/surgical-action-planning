@@ -111,27 +111,32 @@ Input [B, T, 768] (frozen backbone features)
 
 ```
 scripts/
-├── build_registry.py        # ★ 已实现 (1327行). 4数据集 → registry.json
-├── build_priors.py          # 训练集 → 先验权重 (stub)
-├── build_triplet_groups.py  # 共现聚类 → triplet groups (stub)
-├── extract_features.py      # 视频帧 → HDF5 特征 (stub)
-├── train.py                 # ★ 已实现. 训练入口 (DDP + warmup + unified loss)
-├── evaluate.py              # ★ 已实现. 分层评估 (Tier 1-5)
-├── generate_paper_stats.py  # registry → LaTeX 宏 (stub)
-├── preprocess/              # 原始标注 → NPZ (全部 stub)
-│   ├── _common.py           # ★ 已实现. Shared preprocessing utilities
-│   ├── cholect50.py
-│   ├── cholec80.py
-│   ├── cholec80_cvs.py
-│   ├── endoscapes.py
-│   └── heichole.py
+├── train.py                 # ★ 训练入口 (DDP + warmup + unified loss)
+├── evaluate.py              # ★ 分层评估 (Tier 1-5)
+├── run_local_debug.sh       # ★ 一键本地 debug（单卡, batch=4, fp32, 2 epochs）
+├── run_cluster.sh           # ★ 一键集群训练（torchrun 多卡, bf16）
+├── data/                    # 数据准备 pipeline（训练前执行一次）
+│   ├── build_registry.py    # ★ 已实现 (1327行). 4数据集 → registry.json
+│   ├── build_priors.py      # 训练集 → 先验权重 (stub)
+│   ├── build_triplet_groups.py  # 共现聚类 → triplet groups (stub)
+│   ├── extract_features.py  # 视频帧 → HDF5 特征 (stub)
+│   └── preprocess/          # 原始标注 → NPZ (全部 stub)
+│       ├── _common.py       # ★ 已实现. Shared preprocessing utilities
+│       ├── cholect50.py
+│       ├── cholec80.py
+│       ├── cholec80_cvs.py
+│       ├── endoscapes.py
+│       └── heichole.py
+├── paper/                   # 论文工具
+│   └── generate_paper_stats.py  # registry → LaTeX 宏 (stub)
 └── baselines/               # 基线实现 (全部 stub)
     ├── copy_current.py
     ├── surgfutr_style.py
     └── mml_surgadapt_style.py
 ```
 
-Execution order: `build_registry → preprocess/* → extract_features → build_priors → train → evaluate`. See `docs/runbook.md`.
+Data preparation order: `data/build_registry → data/preprocess/* → data/extract_features → data/build_priors`.
+Training: `train → evaluate`. See `docs/runbook.md`.
 
 ## Data Split (CAMMA Combined Strategy)
 
@@ -157,9 +162,26 @@ All tiers meet or exceed original proposal estimates. G3-test=0 (all in train by
 pip install -e .
 python -c "from surgcast.models.surgcast import SurgCastModel; print('OK')"
 python tests/test_smoke.py
-python tests/test_smoke_components.py    # Submodules (action_encoder, event_dyn, next_action_head, etc.)
+python tests/test_smoke_components.py
+```
 
-# Training (local debug)
+## How to Train
+
+**Local debug** — single GPU, batch=4, fp32, 2 epochs:
+```bash
+./scripts/run_local_debug.sh debug_test
+./scripts/run_local_debug.sh debug_cholec --experiment configs/experiment/cholec_only.yaml --stage cholec_only
+./scripts/run_local_debug.sh debug_test --override loss.lambda_hazard=0.5
+```
+
+**Cluster (multi-GPU)** — torchrun, batch=128, bf16:
+```bash
+./scripts/run_cluster.sh surgcast_full --experiment configs/experiment/full.yaml --stage full
+NGPU=4 ./scripts/run_cluster.sh surgcast_4gpu --stage full
+```
+
+**Direct train.py** (full control over config stacking):
+```bash
 python scripts/train.py \
     --config-data configs/data/default.yaml \
     --config-model configs/model/default.yaml \
@@ -169,11 +191,12 @@ python scripts/train.py \
     --registry data/registry.json \
     --features-root /yuming/data/surgcast/features \
     --npz-root /yuming/data/surgcast/npz \
-    --run-name "debug_test"
-
-# With CLI overrides
-python scripts/train.py ... --override loss.lambda_hazard=0.5 trainer.batch_size=8
+    --run-name "my_run" \
+    --override loss.lambda_hazard=0.5 trainer.batch_size=8
 ```
+
+**Config layering**: `default.yaml` → `local_debug.yaml` or `cluster.yaml` → `experiment/*.yaml` → `--override`. Later values win.
+Environment variables `FEATURES_ROOT`, `NPZ_ROOT`, `REGISTRY` override data paths in shell scripts.
 
 ## Output Directory Structure
 
@@ -191,15 +214,21 @@ outputs/{run_name}/
 
 ## Deployment (K8s)
 
-K8s Job YAMLs in `deploy/k8s/`. Apply in order:
-- `0-data-transfer.yaml` — interactive pod for data transfer to PVC
-- `1-git-operation.yaml` — clone repo onto PVC
-- `2-train.yaml` — GPU training job (2×GPU default)
-- `secrets.yaml.template` — template for K8s Secrets (HF_TOKEN, WANDB_API_KEY)
+K8s Job YAMLs in `deploy/k8s/`. `2-train.yaml` calls `run_cluster.sh` internally.
 
-Secrets: `surgcast-secrets` (HF + W&B tokens via SecretRef), `github-token`, `gitlab-docker-secret`.
+```bash
+# Setup (once)
+kubectl apply -f deploy/k8s/secrets.yaml        # HF_TOKEN, WANDB_API_KEY
+kubectl apply -f deploy/k8s/0-data-transfer.yaml # interactive pod → upload data to PVC
+kubectl apply -f deploy/k8s/1-git-operation.yaml # clone repo onto PVC
+
+# Train
+kubectl apply -f deploy/k8s/2-train.yaml        # 2×GPU, calls run_cluster.sh
+kubectl logs -f job/surgcast-train-full-gpu2      # watch progress
+```
+
 Infrastructure: PVC `yuming-pvc-2tb`, Docker image `docker.aiml.team/yuming.chen/surgcast:latest`, `Dockerfile` in repo root.
-Reference project: `/yuming/projects/temporal-perception/MedST/deploy/k8s/` for patterns.
+Secrets: `surgcast-secrets`, `github-token`, `gitlab-docker-secret`.
 
 ## Editing Guidelines
 
