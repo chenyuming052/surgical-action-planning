@@ -7,7 +7,6 @@ tiers:
   tier5: anatomy
   tier6: heichole_external
 metrics:
-  # V2 primary metrics (A1/A2/A3)
   - event_ap_inst_5s
   - event_ap_group_5s
   - post_change_inst_map
@@ -17,10 +16,8 @@ metrics:
   - c_index_group
   - brier_inst_at_5s
   - brier_group_at_5s
-  # Dense
   - dense_map
   - phase_acc
-  # Safety
   - cvs_auc
   - cvs_mae
   - anatomy_map

@@ -22,15 +22,7 @@ def test_model_forward_backward():
         encoder_heads=8,
         dropout=0.0,
         max_seq_len=64,
-        horizons=(1, 3, 5, 10),
-        horizon_embed_dim=64,
-        group_dim=18,
-        instrument_dim=6,
-        phase_dim=7,
-        cvs_ordinal_dim=6,
-        anatomy_dim=5,
-        hazard_trunk_dim=256,
-        hazard_num_bins=20,
+        dynamics_version="B",
     )
 
     features = torch.randn(B, T, D)
@@ -43,11 +35,13 @@ def test_model_forward_backward():
     assert out["anatomy"].shape == (B, T, 5), f"anatomy: {out['anatomy'].shape}"
     assert out["hazard_inst"].shape == (B, T, 20), f"hazard_inst: {out['hazard_inst'].shape}"
     assert out["hazard_group"].shape == (B, T, 20), f"hazard_group: {out['hazard_group'].shape}"
-    assert out["sigma_agg"].shape == (B, T, 4), f"sigma_agg: {out['sigma_agg'].shape}"
-    for h in (1, 3, 5, 10):
-        key = f"transition_{h}s"
-        assert key in out, f"missing {key}"
-        assert out[key].shape == (B, T, 512), f"{key}: {out[key].shape}"
+    assert out["action_token"].shape == (B, T, 64), f"action_token: {out['action_token'].shape}"
+    assert out["mu_plus"].shape == (B, T, 512), f"mu_plus: {out['mu_plus'].shape}"
+    assert out["log_var"].shape == (B, T, 512), f"log_var: {out['log_var'].shape}"
+    assert out["delta_add"].shape == (B, T, 6), f"delta_add: {out['delta_add'].shape}"
+    assert out["delta_remove"].shape == (B, T, 6), f"delta_remove: {out['delta_remove'].shape}"
+    assert out["phase_next"].shape == (B, T, 7), f"phase_next: {out['phase_next'].shape}"
+    assert out["group_next"].shape == (B, T, 18), f"group_next: {out['group_next'].shape}"
 
     # Test with source_embed for CVS head
     source_embed = torch.randn(B, T, 2)
@@ -58,7 +52,6 @@ def test_model_forward_backward():
     print("[OK] Forward shapes verified")
 
     # Compute losses
-    # Flatten B,T for loss computation
     BT = B * T
     phase_targets = torch.randint(0, 7, (BT,))
     phase_mask = torch.ones(BT)

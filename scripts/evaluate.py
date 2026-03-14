@@ -73,7 +73,7 @@ def collect_predictions(
     with torch.no_grad():
         for batch in loader:
             features = batch["features"].to(device, non_blocking=True)
-            outputs = model(features)
+            outputs = model(features, rho=0.0)
 
             for k, v in outputs.items():
                 if isinstance(v, torch.Tensor):

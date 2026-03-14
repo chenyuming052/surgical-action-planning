@@ -4,21 +4,6 @@ import torch
 import torch.nn as nn
 
 
-class DualHazardHead(nn.Module):
-    def __init__(self, hidden_dim: int = 512, sigma_dim: int = 4, trunk_dim: int = 256, num_bins: int = 20):
-        super().__init__()
-        self.trunk = nn.Sequential(
-            nn.Linear(hidden_dim + sigma_dim, trunk_dim),
-            nn.GELU(),
-        )
-        self.inst = nn.Linear(trunk_dim, num_bins)
-        self.group = nn.Linear(trunk_dim, num_bins)
-
-    def forward(self, h_t: torch.Tensor, sigma_agg: torch.Tensor):
-        z = self.trunk(torch.cat([h_t, sigma_agg], dim=-1))
-        return self.inst(z), self.group(z)
-
-
 class StateAgeEncoder(nn.Module):
     """Encodes temporal age features for phase-gated hazard head.
 
@@ -40,8 +25,8 @@ class StateAgeEncoder(nn.Module):
         return self.proj(age_features)  # [B, T, 16]
 
 
-class PhaseGatedDualHazardHead(nn.Module):
-    """Phase-gated dual hazard head (Version B).
+class DualHazardHead(nn.Module):
+    """Phase-gated dual hazard head.
 
     Input: [h_t(512); a_t(64); d_t(2); age_embed(16)] = 594-d
     Shared trunk: Linear(594, 256) -> GELU
@@ -110,7 +95,6 @@ class PhaseGatedDualHazardHead(nn.Module):
         phase_weights = torch.softmax(self.phase_router(h_t), dim=-1)  # [B, T, 7]
 
         # Weighted sum of expert residuals
-        # Stack expert outputs for efficient computation
         inst_residual = torch.zeros_like(inst_base)   # [B, T, 20]
         group_residual = torch.zeros_like(group_base)  # [B, T, 20]
 

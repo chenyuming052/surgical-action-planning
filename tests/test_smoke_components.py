@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Smoke test: V2 model instantiation, forward shapes, and import sweep."""
+"""Smoke test: submodule instantiation, forward shapes, and import sweep."""
 from __future__ import annotations
 
 import sys
@@ -50,14 +50,14 @@ def test_event_dyn():
     print(f"[OK] ActionConditionedTransition instantiated: {n_params:,} params")
 
 
-def test_phase_gated_hazard_head():
-    from surgcast.models.hazard_head import PhaseGatedDualHazardHead, StateAgeEncoder
+def test_dual_hazard_head():
+    from surgcast.models.hazard_head import DualHazardHead, StateAgeEncoder
 
     age_enc = StateAgeEncoder(input_dim=3, embed_dim=16)
     n_params = sum(p.numel() for p in age_enc.parameters())
     print(f"[OK] StateAgeEncoder instantiated: {n_params:,} params")
 
-    head = PhaseGatedDualHazardHead(
+    head = DualHazardHead(
         hidden_dim=512,
         action_dim=64,
         source_dim=2,
@@ -67,13 +67,13 @@ def test_phase_gated_hazard_head():
         num_phases=7,
     )
     n_params = sum(p.numel() for p in head.parameters())
-    print(f"[OK] PhaseGatedDualHazardHead instantiated: {n_params:,} params")
+    print(f"[OK] DualHazardHead instantiated: {n_params:,} params")
 
 
-def test_multi_task_heads_v2():
-    from surgcast.models.heads import MultiTaskHeadsV2
+def test_multi_task_heads():
+    from surgcast.models.heads import MultiTaskHeads
 
-    heads = MultiTaskHeadsV2(
+    heads = MultiTaskHeads(
         hidden_dim=512,
         group_dim=18,
         instrument_dim=6,
@@ -83,16 +83,16 @@ def test_multi_task_heads_v2():
         cvs_ordinal_dim=6,
     )
     n_params = sum(p.numel() for p in heads.parameters())
-    print(f"[OK] MultiTaskHeadsV2 instantiated: {n_params:,} params")
+    print(f"[OK] MultiTaskHeads instantiated: {n_params:,} params")
 
 
-def test_surgcast_model_v2():
-    from surgcast.models.surgcast import SurgCastModelV2
+def test_surgcast_model():
+    from surgcast.models.surgcast import SurgCastModel
 
     set_seed(42)
 
     # Version B (event-conditioned)
-    model_b = SurgCastModelV2(
+    model_b = SurgCastModel(
         input_dim=768,
         hidden_dim=512,
         encoder_layers=2,
@@ -103,10 +103,10 @@ def test_surgcast_model_v2():
     )
     n_params = sum(p.numel() for p in model_b.parameters())
     n_trainable = sum(p.numel() for p in model_b.parameters() if p.requires_grad)
-    print(f"[OK] SurgCastModelV2 (Version B) instantiated: {n_trainable:,} trainable / {n_params:,} total")
+    print(f"[OK] SurgCastModel (Version B) instantiated: {n_trainable:,} trainable / {n_params:,} total")
 
     # Version A (fixed-horizon with action)
-    model_a = SurgCastModelV2(
+    model_a = SurgCastModel(
         input_dim=768,
         hidden_dim=512,
         encoder_layers=2,
@@ -116,7 +116,7 @@ def test_surgcast_model_v2():
         dynamics_version="A",
     )
     n_params = sum(p.numel() for p in model_a.parameters())
-    print(f"[OK] SurgCastModelV2 (Version A) instantiated: {n_params:,} total params")
+    print(f"[OK] SurgCastModel (Version A) instantiated: {n_params:,} total params")
 
 
 def test_loss_function_signatures():
@@ -130,7 +130,7 @@ def test_loss_function_signatures():
     # Just verify they exist and are callable
     for fn in [ordinal_bce_cvs, ranking_loss, consistency_cvs_anatomy, next_action_loss, heteroscedastic_nll]:
         assert callable(fn), f"{fn.__name__} is not callable"
-    print("[OK] All V2 loss functions importable and callable")
+    print("[OK] All loss functions importable and callable")
 
 
 def test_import_sweep():
@@ -139,17 +139,17 @@ def test_import_sweep():
     import surgcast.metrics
     import surgcast.utils
 
-    # Verify key V2 classes are accessible
-    assert hasattr(surgcast.models, 'SurgCastModelV2')
+    # Verify core classes are accessible
+    assert hasattr(surgcast.models, 'SurgCastModel')
     assert hasattr(surgcast.models, 'ActionTokenEncoder')
     assert hasattr(surgcast.models, 'EventDyn')
     assert hasattr(surgcast.models, 'ActionConditionedTransition')
     assert hasattr(surgcast.models, 'NextActionHead')
-    assert hasattr(surgcast.models, 'PhaseGatedDualHazardHead')
+    assert hasattr(surgcast.models, 'DualHazardHead')
     assert hasattr(surgcast.models, 'StateAgeEncoder')
-    assert hasattr(surgcast.models, 'MultiTaskHeadsV2')
+    assert hasattr(surgcast.models, 'MultiTaskHeads')
 
-    # Verify V2 loss functions
+    # Verify loss functions
     assert hasattr(surgcast.loss, 'ordinal_bce_cvs')
     assert hasattr(surgcast.loss, 'ranking_loss')
     assert hasattr(surgcast.loss, 'consistency_cvs_anatomy')
@@ -165,7 +165,7 @@ def test_import_sweep():
     assert hasattr(surgcast.utils, 'extract_instrument_changes')
     assert hasattr(surgcast.utils, 'compute_cooccurrence_matrix')
 
-    print("[OK] Full import sweep passed — all V2 modules accessible")
+    print("[OK] Full import sweep passed — all modules accessible")
 
 
 if __name__ == "__main__":
@@ -173,12 +173,12 @@ if __name__ == "__main__":
         test_action_token_encoder()
         test_next_action_head()
         test_event_dyn()
-        test_phase_gated_hazard_head()
-        test_multi_task_heads_v2()
-        test_surgcast_model_v2()
+        test_dual_hazard_head()
+        test_multi_task_heads()
+        test_surgcast_model()
         test_loss_function_signatures()
         test_import_sweep()
-        print("\n=== All V2 smoke tests passed ===")
+        print("\n=== All component smoke tests passed ===")
     except Exception as e:
         print(f"\nFAILED: {e}", file=sys.stderr)
         raise SystemExit(1)

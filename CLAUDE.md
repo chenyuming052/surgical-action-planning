@@ -15,19 +15,18 @@ NeurIPS 2026 submission. Event-centric surgical anticipation under heterogeneous
 surgcast/                  # Flat layout (no src/ wrapper)
 ├── models/                # All model code
 │   ├── __init__.py        # Exports + build_model() factory
-│   ├── surgcast.py        # SurgCastModel — top-level wiring
+│   ├── surgcast.py        # SurgCastModel — top-level wiring (event-conditioned pipeline)
 │   ├── temporal_encoder.py  # CausalTemporalTransformer (causal masked self-attention)
-│   ├── transition.py      # HorizonConditionedTransition / Latent Rollout Module (Δ={1,3,5,10}s)
-│   ├── heads.py           # MultiTaskHeads (triplet_group, instrument, phase, anatomy, cvs)
-│   ├── hazard_head.py     # DualHazardHead (shared trunk → inst + group heads)
+│   ├── heads.py           # MultiTaskHeads (triplet_group, instrument, phase, anatomy, cvs with anatomy injection)
+│   ├── hazard_head.py     # DualHazardHead (phase-gated, residual experts) + StateAgeEncoder
 │   ├── backbone.py        # BackboneSpec dataclass (dinov3_vitb16, lemonfm)
 │   ├── prior.py           # StructuredPrior — optional regularizer (TODO: categorical + Bernoulli)
 │   ├── action_encoder.py  # ActionTokenEncoder (coarse+fine token fusion, teacher forcing)
-│   ├── event_dyn.py       # EventDyn / ActionConditionedTransition (FiLM-conditioned dynamics)
+│   ├── event_dyn.py       # EventDyn (FiLM-conditioned dynamics) / ActionConditionedTransition (dynamics_version A)
 │   └── next_action_head.py  # NextActionHead (delta-state post-change prediction)
 ├── training/              # Training execution layer
 │   ├── __init__.py        # Exports: Trainer, save/load_checkpoint, TrainingLogger
-│   ├── trainer.py         # Train/val loop, mixed precision, DDP, gradient accumulation
+│   ├── trainer.py         # Train/val loop, mixed precision, DDP, gradient accumulation, teacher forcing
 │   ├── checkpoint.py      # Save/load with full config + git hash
 │   └── logger.py          # W&B wrapper with JSON fallback
 ├── loss/                  # Singular (PyTorch convention)
@@ -36,7 +35,7 @@ surgcast/                  # Flat layout (no src/ wrapper)
 ├── datasets/              # Data loading (not raw data — raw data lives at /yuming/data)
 │   ├── sequence_dataset.py  # SequenceDataset + SequenceSample + collate_fn (NPZ caching)
 │   ├── sampler.py         # CoverageAwareSampler (weighted G1-G7)
-│   ├── registry.py        # load_registry, filter_by_split
+│   ├── registry.py        # load_registry (envelope + flat-list compat), filter_by_split
 │   └── npz_loader.py      # load_npz
 ├── metrics/               # Plural (community convention). 15 metrics implemented.
 │   ├── change.py          # Event-AP @horizon, Event-AUROC, Post-change mAP, dense mAP, change-conditioned
@@ -50,7 +49,7 @@ surgcast/                  # Flat layout (no src/ wrapper)
     └── triplet_clustering.py  # co-occurrence + semantic clustering for triplet groups
 configs/
 ├── data/default.yaml      # seed, fps, hazard bins, coverage groups
-├── model/default.yaml     # backbone, encoder, transition, heads, hazard, V2 modules
+├── model/default.yaml     # backbone, encoder, heads, hazard, action_encoder, event_dyn, dynamics_version
 ├── train/default.yaml     # optimizer, scheduler, trainer, loss weights, teacher forcing
 ├── train/local_debug.yaml # batch_size=4, num_workers=0, epochs=2, fp32
 ├── train/cluster.yaml     # K8s cluster overrides (batch_size=128, num_workers=16)
@@ -72,19 +71,17 @@ configs/
 ```
 Input [B, T, 768] (frozen backbone features)
   → CausalTemporalTransformer → h [B, T, 512]
-  → Latent Rollout Module / HorizonConditionedTransition (×4 horizons) → pred_state + log_var
-  → σ_agg = stack(sqrt(mean(exp(log_var)))) → [B, T, 4]
   → MultiTaskHeads(h) → triplet_group, instrument, phase, anatomy, [cvs]
-  → DualHazardHead(h, σ_agg) → hazard_inst, hazard_group [B, T, 20]
-
-V2 additions:
-  ActionTokenEncoder(y_t or ŷ_t, rho) → a_t [B, T, 64]
-  EventDyn(h_t, a_t, hazard_bins) → mu_plus, log_var (FiLM-conditioned)
-  NextActionHead(h_t, a_t) → delta_add, delta_remove, phase_next, group_next
-  PhaseGatedDualHazardHead(h_t, σ_agg, phase_logits) → hazard_inst, hazard_group
+  → ActionTokenEncoder(y_t or ŷ_t, rho) → a_t [B, T, 64]
+  → NextActionHead(h, a_t) → delta_add, delta_remove, phase_next, group_next
+  → StateAgeEncoder(age_features) → age_embed [B, T, 16]
+  → DualHazardHead(h, a_t, d_t, age_embed) → hazard_inst, hazard_group [B, T, 20]
+  → EventDyn(h, tau_bin) → mu_plus, log_var [B, T, 512]  (dynamics_version="B")
+    or ActionConditionedTransition(h, a_t, horizon) per horizon   (dynamics_version="A")
 ```
 
-~7.7M trainable parameters (2-layer encoder for dev; 6-layer for full ~11.2M).
+~8.2M trainable parameters (2-layer encoder for dev; 6-layer for full ~11.2M).
+`dynamics_version` ("A" or "B") is an internal ablation switch, not a separate model.
 
 ## Key Conventions
 
@@ -100,14 +97,14 @@ V2 additions:
 
 | Component | Status | Key gap |
 |-----------|--------|---------|
-| Models | ~95% | V1 + V2 forward passes implemented; `StructuredPrior` still stub; `build_model()` factory in `__init__.py` |
-| Training | ~90% | `Trainer` with DDP, warmup scheduler (SequentialLR), mixed precision; `train.py` with `build_loss_fn_v2`; `torchrun` ready |
-| Losses | ~95% | All V2 losses implemented (ordinal_bce_cvs, ranking, consistency, next_action, heteroscedastic_nll); focal + prior KL not wired |
-| Datasets | ~95% | NPZ caching + V2 label loading (CVS, triplet indices, change flags, age features); needs real data to test |
+| Models | ~95% | Unified architecture with dynamics_version ablation; `StructuredPrior` still stub; `build_model()` factory in `__init__.py` |
+| Training | ~95% | `Trainer` with DDP, warmup scheduler (SequentialLR), mixed precision, teacher forcing, model input extraction; `torchrun` ready |
+| Losses | ~95% | All losses implemented (ordinal_bce_cvs, ranking, consistency, next_action, heteroscedastic_nll); focal + prior KL not wired |
+| Datasets | ~95% | NPZ caching + label loading (CVS, triplet indices, change flags, age features); `load_registry` handles envelope format; needs real data to test |
 | Metrics | ~95% | All 15 metrics implemented across 3 modules; tested with synthetic data |
 | Config | ~95% | `load_config` with deep_merge + CLI overrides; 9 experiment configs; `cluster.yaml` for K8s |
 | Scripts | ~40% | `build_registry.py`, `train.py`, `evaluate.py` complete; `preprocess/_common.py` added; baselines still stub |
-| Tests | smoke v1+v2 | `test_smoke.py` + `test_smoke_v2.py` (V2 forward+backward verified) |
+| Tests | smoke | `test_smoke.py` (unified model forward+backward) + `test_smoke_components.py` (all submodules + imports) |
 | Deploy | ~90% | K8s typo fixed; `torchrun` for DDP; `cluster.yaml` config; `Dockerfile` added |
 
 ## Scripts
@@ -118,7 +115,7 @@ scripts/
 ├── build_priors.py          # 训练集 → 先验权重 (stub)
 ├── build_triplet_groups.py  # 共现聚类 → triplet groups (stub)
 ├── extract_features.py      # 视频帧 → HDF5 特征 (stub)
-├── train.py                 # ★ 已实现. 训练入口 (DDP + warmup + V2 loss)
+├── train.py                 # ★ 已实现. 训练入口 (DDP + warmup + unified loss)
 ├── evaluate.py              # ★ 已实现. 分层评估 (Tier 1-5)
 ├── generate_paper_stats.py  # registry → LaTeX 宏 (stub)
 ├── preprocess/              # 原始标注 → NPZ (全部 stub)
@@ -160,7 +157,7 @@ All tiers meet or exceed original proposal estimates. G3-test=0 (all in train by
 pip install -e .
 python -c "from surgcast.models.surgcast import SurgCastModel; print('OK')"
 python tests/test_smoke.py
-python tests/test_smoke_v2.py    # V2 modules (action_encoder, event_dyn, next_action_head)
+python tests/test_smoke_components.py    # Submodules (action_encoder, event_dyn, next_action_head, etc.)
 
 # Training (local debug)
 python scripts/train.py \

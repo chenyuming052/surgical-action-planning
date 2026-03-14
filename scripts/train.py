@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-"""Train baseline or full SurgCast.
+"""Train SurgCast model.
 
 Example stages:
 - cholec_only
@@ -19,11 +19,10 @@ Usage:
         --config-data configs/data/default.yaml \
         --config-model configs/model/default.yaml \
         --config-train configs/train/default.yaml \
-        --stage full \
         --registry data/registry.json \
         --features-root /yuming/data/surgcast/features \
         --npz-root /yuming/data/surgcast/npz \
-        --run-name "surgcast_full_v1"
+        --run-name "surgcast_full"
 
     # With experiment override and CLI overrides:
     python scripts/train.py \
@@ -60,6 +59,13 @@ from surgcast.datasets import (
     filter_by_split,
 )
 from surgcast.loss import masked_bce, masked_ce, discrete_time_hazard_nll
+from surgcast.loss import (
+    ordinal_bce_cvs,
+    ranking_loss,
+    consistency_cvs_anatomy,
+    next_action_loss,
+    heteroscedastic_nll,
+)
 from surgcast.training import Trainer, TrainingLogger
 
 
@@ -86,6 +92,10 @@ def build_loss_fn(config: dict):
     lambda_align = loss_cfg.get("lambda_align", 0.5)
     lambda_hazard = loss_cfg.get("lambda_hazard", 1.0)
     eta_group = loss_cfg.get("eta_group", 1.0)
+    lambda_dyn = loss_cfg.get("lambda_dyn", 0.5)
+    lambda_next = loss_cfg.get("lambda_next", 0.3)
+    lambda_rank = loss_cfg.get("lambda_rank", 0.1)
+    lambda_consist = loss_cfg.get("lambda_consist", 0.1)
 
     def loss_fn(outputs, labels, masks):
         losses = {}
@@ -141,88 +151,7 @@ def build_loss_fn(config: dict):
                 censored.reshape(-1).bool(),
             ) * lambda_hazard * eta_group
 
-        # Total
-        total = sum(losses.values()) if losses else torch.tensor(0.0)
-        losses["total"] = total
-        return losses
-
-    return loss_fn
-
-
-def build_loss_fn_v2(config: dict):
-    """Return a loss function for V2 model that includes event-conditioned losses."""
-    from surgcast.loss import (
-        ordinal_bce_cvs,
-        ranking_loss,
-        consistency_cvs_anatomy,
-        next_action_loss,
-        heteroscedastic_nll,
-    )
-
-    loss_cfg = config.get("loss", {})
-    lambda_align = loss_cfg.get("lambda_align", 0.5)
-    lambda_hazard = loss_cfg.get("lambda_hazard", 1.0)
-    eta_group = loss_cfg.get("eta_group", 1.0)
-    lambda_dyn = loss_cfg.get("lambda_dyn", 0.5)
-    lambda_next = loss_cfg.get("lambda_next", 0.3)
-    lambda_rank = loss_cfg.get("lambda_rank", 0.1)
-    lambda_consist = loss_cfg.get("lambda_consist", 0.1)
-
-    def loss_fn(outputs, labels, masks):
-        losses = {}
-
-        # V1 multi-task alignment losses
-        if "triplet_group" in outputs and "triplet_group" in labels:
-            mask = masks.get("triplet_group", torch.ones_like(labels["triplet_group"]))
-            losses["triplet_group"] = masked_bce(
-                outputs["triplet_group"], labels["triplet_group"], mask,
-            ) * lambda_align
-
-        if "instrument" in outputs and "instrument" in labels:
-            mask = masks.get("instrument", torch.ones_like(labels["instrument"]))
-            losses["instrument"] = masked_bce(
-                outputs["instrument"], labels["instrument"], mask,
-            ) * lambda_align
-
-        if "phase" in outputs and "phase" in labels:
-            mask = masks.get("phase", torch.ones(labels["phase"].shape[0], labels["phase"].shape[1],
-                                                  device=labels["phase"].device))
-            losses["phase"] = masked_ce(
-                outputs["phase"], labels["phase"], mask,
-            ) * lambda_align
-
-        if "anatomy" in outputs and "anatomy" in labels:
-            mask = masks.get("anatomy", torch.ones_like(labels["anatomy"]))
-            losses["anatomy"] = masked_bce(
-                outputs["anatomy"], labels["anatomy"], mask,
-            ) * lambda_align
-
-        # Hazard losses
-        if "hazard_inst" in outputs and "hazard_inst_bin" in labels:
-            B, T, K = outputs["hazard_inst"].shape
-            censored = labels.get(
-                "hazard_inst_censored",
-                torch.zeros(B, T, dtype=torch.bool, device=outputs["hazard_inst"].device),
-            )
-            losses["hazard_inst"] = discrete_time_hazard_nll(
-                outputs["hazard_inst"].reshape(-1, K),
-                labels["hazard_inst_bin"].reshape(-1).long(),
-                censored.reshape(-1).bool(),
-            ) * lambda_hazard
-
-        if "hazard_group" in outputs and "hazard_group_bin" in labels:
-            B, T, K = outputs["hazard_group"].shape
-            censored = labels.get(
-                "hazard_group_censored",
-                torch.zeros(B, T, dtype=torch.bool, device=outputs["hazard_group"].device),
-            )
-            losses["hazard_group"] = discrete_time_hazard_nll(
-                outputs["hazard_group"].reshape(-1, K),
-                labels["hazard_group_bin"].reshape(-1).long(),
-                censored.reshape(-1).bool(),
-            ) * lambda_hazard * eta_group
-
-        # V2 losses: dynamics
+        # Dynamics loss
         if lambda_dyn > 0 and "mu_plus" in outputs and "target_state" in labels:
             mask = masks.get("dynamics", torch.ones(labels["target_state"].shape[:2],
                                                     device=labels["target_state"].device))
@@ -231,7 +160,7 @@ def build_loss_fn_v2(config: dict):
                 labels["target_state"], mask,
             ) * lambda_dyn
 
-        # V2 losses: next action
+        # Next action loss
         if lambda_next > 0 and "delta_add" in outputs and "target_delta_add" in labels:
             mask = masks.get("next_action", torch.ones(labels["target_delta_add"].shape[:2],
                                                        device=labels["target_delta_add"].device))
@@ -243,7 +172,7 @@ def build_loss_fn_v2(config: dict):
                 mask,
             ) * lambda_next
 
-        # V2 losses: ranking
+        # Ranking loss
         if lambda_rank > 0 and "predicted_ttc" in outputs and "true_ttc" in labels:
             censored = labels.get("ttc_censored",
                                   torch.zeros_like(labels["true_ttc"], dtype=torch.bool))
@@ -251,7 +180,7 @@ def build_loss_fn_v2(config: dict):
                 outputs["predicted_ttc"], labels["true_ttc"], censored,
             ) * lambda_rank
 
-        # V2 losses: CVS ordinal
+        # CVS ordinal loss
         if lambda_align > 0 and "cvs" in outputs and "cvs" in labels:
             mask = masks.get("cvs", torch.ones(labels["cvs"].shape[:2],
                                                device=labels["cvs"].device))
@@ -259,7 +188,7 @@ def build_loss_fn_v2(config: dict):
                 outputs["cvs"], labels["cvs"], mask,
             ) * lambda_align
 
-        # V2 losses: consistency
+        # Consistency loss
         if lambda_consist > 0 and "cvs_c1_prob" in outputs and "anatomy" in outputs:
             mask = masks.get("cvs", torch.ones(outputs["cvs_c1_prob"].shape,
                                                device=outputs["cvs_c1_prob"].device))
@@ -374,7 +303,8 @@ def main():
                         help="Training config YAML(s)")
     parser.add_argument("--experiment", default=None,
                         help="Experiment override YAML")
-    parser.add_argument("--stage", required=True)
+    parser.add_argument("--stage", default=None,
+                        help="Experiment stage name (stored as metadata)")
     parser.add_argument("--registry", required=True)
     parser.add_argument("--features-root", required=True)
     parser.add_argument("--npz-root", required=True)
@@ -403,6 +333,10 @@ def main():
         cli_overrides = parse_overrides(args.override)
         config = deep_merge(config, cli_overrides)
 
+    # Store stage as metadata
+    if args.stage:
+        config["stage"] = args.stage
+
     # Seed
     seed = config.get("seed", 3407)
     set_seed(seed)
@@ -425,11 +359,7 @@ def main():
               file=sys.stderr)
 
     optimizer, scheduler = build_optimizer(model, config)
-    version = config.get("version", "v1")
-    if version == "v2":
-        loss_fn = build_loss_fn_v2(config)
-    else:
-        loss_fn = build_loss_fn(config)
+    loss_fn = build_loss_fn(config)
 
     train_loader, val_loader = build_data_loaders(
         config, args.registry, args.features_root, args.npz_root,

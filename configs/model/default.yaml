@@ -1,4 +1,4 @@
-version: v1
+dynamics_version: B
 
 backbone:
   name: dinov3_vitb16
@@ -28,7 +28,6 @@ hazard:
   shared_hidden_dim: 256
   num_bins: 20
 
-# V2 modules
 action_encoder:
   instrument_dim: 6
   phase_dim: 7

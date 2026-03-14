@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.utils.data import DataLoader
@@ -28,6 +29,45 @@ def _get_rank() -> int:
 
 def _is_main_process() -> bool:
     return _get_rank() == 0
+
+
+def _extract_model_inputs(labels: Dict[str, torch.Tensor], rho: float) -> Dict[str, Any]:
+    """Build keyword arguments for SurgCastModel.forward() from batch labels.
+
+    Extracts instrument_labels, phase_labels (int→one-hot), triplet_indices,
+    triplet_mask, age_features, and rho for teacher forcing.
+    """
+    kwargs: Dict[str, Any] = {"rho": rho}
+
+    if "instrument" in labels:
+        kwargs["instrument_labels"] = labels["instrument"]
+
+    if "phase" in labels:
+        # phase labels are integer class indices → convert to one-hot
+        phase_int = labels["phase"]  # [B, T]
+        # Clamp -1 (ignore) to 0 for one_hot, mask handles ignoring
+        safe = phase_int.clamp(min=0)
+        kwargs["phase_labels"] = F.one_hot(safe.long(), num_classes=7).float()
+
+    if "triplet_indices" in labels:
+        kwargs["triplet_indices"] = labels["triplet_indices"]
+    if "triplet_mask" in labels:
+        kwargs["triplet_mask"] = labels["triplet_mask"]
+
+    # Age features: stack [age_inst, age_phase, stable_run_length] → [B, T, 3]
+    age_keys = ["age_inst", "age_phase", "stable_run_length"]
+    if all(k in labels for k in age_keys):
+        kwargs["age_features"] = torch.stack(
+            [labels[k] for k in age_keys], dim=-1
+        )
+
+    if "source_embed" in labels:
+        kwargs["source_embed"] = labels["source_embed"]
+
+    if "has_action_labels" in labels:
+        kwargs["has_action_labels"] = labels["has_action_labels"]
+
+    return kwargs
 
 
 class Trainer:
@@ -131,8 +171,10 @@ class Trainer:
             labels = {k: v.to(self.device, non_blocking=True) for k, v in batch["labels"].items()}
             masks = {k: v.to(self.device, non_blocking=True) for k, v in batch["masks"].items()}
 
+            model_kwargs = _extract_model_inputs(labels, rho)
+
             with self.autocast_ctx():
-                outputs = self.model(features)
+                outputs = self.model(features, **model_kwargs)
                 loss_dict = self.loss_fn(outputs, labels, masks)
                 loss = loss_dict["total"] / self.grad_accum_steps
 
@@ -175,8 +217,10 @@ class Trainer:
             labels = {k: v.to(self.device, non_blocking=True) for k, v in batch["labels"].items()}
             masks = {k: v.to(self.device, non_blocking=True) for k, v in batch["masks"].items()}
 
+            model_kwargs = _extract_model_inputs(labels, rho=0.0)
+
             with self.autocast_ctx():
-                outputs = self.model(features)
+                outputs = self.model(features, **model_kwargs)
                 loss_dict = self.loss_fn(outputs, labels, masks)
 
             total_loss += loss_dict["total"].item()
