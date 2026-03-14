@@ -1,0 +1,13 @@
+# Stage 1: CholecT50 + Cholec80 only.
+# Core task heads + hazard, no CVS/anatomy/prior.
+loss:
+  lambda_align: 0.5
+  lambda_hazard: 1.0
+  lambda_prior: 0.0
+  lambda_dyn: 0.0
+  lambda_next: 0.0
+  lambda_rank: 0.0
+  lambda_consist: 0.0
+heads:
+  enable_cvs: false
+  enable_anatomy: false

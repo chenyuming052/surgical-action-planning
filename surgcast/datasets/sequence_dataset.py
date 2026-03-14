@@ -34,13 +34,30 @@ def collate_fn(batch: List[SequenceSample]) -> Dict[str, Any]:
         all_label_keys.update(s.labels.keys())
         all_mask_keys.update(s.visibility_masks.keys())
 
+    # Find a reference tensor for each key from the first sample that has it
+    label_refs = {}
+    for key in sorted(all_label_keys):
+        for s in batch:
+            if key in s.labels:
+                label_refs[key] = s.labels[key]
+                break
+
     labels = {}
     for key in sorted(all_label_keys):
-        labels[key] = torch.stack([s.labels.get(key, torch.zeros_like(batch[0].labels.get(key, torch.tensor(0)))) for s in batch])
+        ref = label_refs[key]
+        labels[key] = torch.stack([s.labels.get(key, torch.zeros_like(ref)) for s in batch])
+
+    mask_refs = {}
+    for key in sorted(all_mask_keys):
+        for s in batch:
+            if key in s.visibility_masks:
+                mask_refs[key] = s.visibility_masks[key]
+                break
 
     masks = {}
     for key in sorted(all_mask_keys):
-        masks[key] = torch.stack([s.visibility_masks.get(key, torch.zeros_like(batch[0].visibility_masks.get(key, torch.tensor(0)))) for s in batch])
+        ref = mask_refs[key]
+        masks[key] = torch.stack([s.visibility_masks.get(key, torch.zeros_like(ref)) for s in batch])
 
     meta = [s.meta for s in batch]
 
@@ -76,6 +93,7 @@ class SequenceDataset(Dataset):
         npz_root: str,
         seq_len: int = 16,
         stride: int = 8,
+        cache_npz: bool = True,
     ):
         self.samples = {s["canonical_id"]: s for s in samples}
         self.feature_h5 = feature_h5
@@ -83,6 +101,10 @@ class SequenceDataset(Dataset):
         self.seq_len = seq_len
         self.stride = stride
         self._h5_handle: Optional[h5py.File] = None
+
+        # NPZ cache: vid -> {array_name: np.ndarray}
+        self._cache_npz = cache_npz
+        self._npz_cache: Dict[str, Dict[str, np.ndarray]] = {}
 
         # Build (video_id, start_frame) index
         self.index: List[tuple] = []
@@ -93,6 +115,9 @@ class SequenceDataset(Dataset):
             if not npz_path.exists():
                 continue
             data = np.load(npz_path, allow_pickle=False)
+            # Cache NPZ arrays in memory to avoid repeated disk I/O
+            if cache_npz:
+                self._npz_cache[vid] = {k: data[k].copy() for k in data.files}
             # Use phase length as reference if available, else first array
             if "phase" in data:
                 T = len(data["phase"])
@@ -125,9 +150,12 @@ class SequenceDataset(Dataset):
             pad = torch.zeros(self.seq_len - actual_len, feats.size(-1))
             feats = torch.cat([feats, pad], dim=0)
 
-        # Load labels from NPZ
-        npz_path = self.npz_root / f"{vid}.npz"
-        data = np.load(npz_path, allow_pickle=False)
+        # Load labels from NPZ (cached or from disk)
+        if self._cache_npz and vid in self._npz_cache:
+            data = self._npz_cache[vid]
+        else:
+            npz_path = self.npz_root / f"{vid}.npz"
+            data = dict(np.load(npz_path, allow_pickle=False))
 
         labels = {}
         masks = {}
@@ -177,6 +205,52 @@ class SequenceDataset(Dataset):
                     pad_t = torch.zeros(self.seq_len - actual_len, dtype=t.dtype)
                     t = torch.cat([t, pad_t], dim=0)
                 labels[hkey] = t
+
+        # V2 labels: CVS ordinal targets
+        if "cvs" in data:
+            arr = data["cvs"][start:end]
+            t = torch.from_numpy(arr.copy()).float()
+            if actual_len < self.seq_len:
+                pad_t = torch.zeros(self.seq_len - actual_len, t.size(-1), dtype=t.dtype) if t.ndim > 1 else torch.zeros(self.seq_len - actual_len, dtype=t.dtype)
+                t = torch.cat([t, pad_t], dim=0)
+            labels["cvs"] = t
+            mask_key = "mask_cvs"
+            if mask_key in data:
+                m = torch.from_numpy(data[mask_key][start:end].copy()).float()
+                if actual_len < self.seq_len:
+                    pad_m = torch.zeros(self.seq_len - actual_len) if m.ndim == 1 else torch.zeros(self.seq_len - actual_len, m.size(-1))
+                    m = torch.cat([m, pad_m], dim=0)
+                masks["cvs"] = m
+            else:
+                masks["cvs"] = torch.cat([torch.ones(actual_len), torch.zeros(self.seq_len - actual_len)]) if actual_len < self.seq_len else torch.ones(actual_len)
+
+        # V2 labels: triplet indices for action encoder
+        for tkey in ["triplet_indices", "triplet_mask"]:
+            if tkey in data:
+                arr = data[tkey][start:end]
+                t = torch.from_numpy(arr.copy())
+                if actual_len < self.seq_len:
+                    if t.ndim == 1:
+                        pad_t = torch.zeros(self.seq_len - actual_len, dtype=t.dtype)
+                    else:
+                        pad_t = torch.zeros(self.seq_len - actual_len, t.size(-1), dtype=t.dtype)
+                    t = torch.cat([t, pad_t], dim=0)
+                labels[tkey] = t
+
+        # V2 labels: next-action targets and change flags
+        for nkey in ["target_delta_add", "target_delta_remove", "target_phase_next",
+                     "target_group_next", "target_state", "change_flag", "true_ttc",
+                     "ttc_censored", "age_inst", "age_phase", "stable_run_length"]:
+            if nkey in data:
+                arr = data[nkey][start:end]
+                t = torch.from_numpy(arr.copy())
+                if actual_len < self.seq_len:
+                    if t.ndim == 1:
+                        pad_t = torch.zeros(self.seq_len - actual_len, dtype=t.dtype)
+                    else:
+                        pad_t = torch.zeros(self.seq_len - actual_len, t.size(-1), dtype=t.dtype)
+                    t = torch.cat([t, pad_t], dim=0)
+                labels[nkey] = t.float() if t.dtype in (torch.float64,) else t
 
         meta = {
             "canonical_id": vid,

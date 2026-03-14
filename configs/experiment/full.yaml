@@ -1,0 +1,12 @@
+# Stage: Full model — all heads, all losses, all datasets.
+loss:
+  lambda_align: 0.5
+  lambda_hazard: 1.0
+  lambda_prior: 0.3
+  lambda_dyn: 0.5
+  lambda_next: 0.3
+  lambda_rank: 0.1
+  lambda_consist: 0.1
+heads:
+  enable_cvs: true
+  enable_anatomy: true

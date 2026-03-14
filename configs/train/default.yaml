@@ -17,3 +17,15 @@ loss:
   lambda_prior: 0.3
   eta_group: 1.0
   focal_gamma: 2.0
+  # V2 loss weights
+  lambda_dyn: 0.5
+  lambda_next: 0.3
+  lambda_rank: 0.1
+  lambda_consist: 0.1
+  alpha_delta: 1.0
+  beta_delta: 1.0
+
+teacher_forcing:
+  rho_init: 1.0
+  rho_final: 0.0
+  schedule: linear   # linear, cosine, step

@@ -1,0 +1,6 @@
+# K8s cluster training overrides — merge on top of train/default.yaml.
+# Usage: python scripts/train.py --config-train configs/train/default.yaml configs/train/cluster.yaml ...
+trainer:
+  batch_size: 128
+  num_workers: 16
+  precision: bf16-mixed

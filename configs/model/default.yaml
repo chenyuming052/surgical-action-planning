@@ -1,3 +1,5 @@
+version: v1
+
 backbone:
   name: dinov3_vitb16
   feature_dim: 768
@@ -25,3 +27,29 @@ heads:
 hazard:
   shared_hidden_dim: 256
   num_bins: 20
+
+# V2 modules
+action_encoder:
+  instrument_dim: 6
+  phase_dim: 7
+  triplet_vocab_size: 100
+  triplet_embed_dim: 32
+  token_dim: 64
+  set_transformer_heads: 4
+
+event_dyn:
+  bin_embed_dim: 64
+  film_hidden_dim: 256
+
+next_action_head:
+  trunk_dim: 256
+
+phase_gated_hazard:
+  action_dim: 64
+  source_dim: 2
+  age_dim: 16
+  num_phases: 7
+
+state_age:
+  input_dim: 3
+  embed_dim: 16

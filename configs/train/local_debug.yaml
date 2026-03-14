@@ -1,0 +1,7 @@
+# Local debugging overrides — merge on top of train/default.yaml.
+# Usage: python scripts/train.py --config-train configs/train/default.yaml configs/train/local_debug.yaml ...
+trainer:
+  max_epochs: 2
+  batch_size: 4
+  num_workers: 0
+  precision: fp32

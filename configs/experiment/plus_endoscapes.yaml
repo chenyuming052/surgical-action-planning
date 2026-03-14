@@ -1,0 +1,12 @@
+# Stage 5: Add Endoscapes anatomy supervision.
+loss:
+  lambda_align: 0.5
+  lambda_hazard: 1.0
+  lambda_prior: 0.0
+  lambda_dyn: 0.0
+  lambda_next: 0.0
+  lambda_rank: 0.0
+  lambda_consist: 0.1
+heads:
+  enable_cvs: true
+  enable_anatomy: true
